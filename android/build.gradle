@@ -1,0 +1,36 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = "../build"
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    
+    // Set extension properties BEFORE evaluation
+    if (project.name != 'app') {
+        project.ext {
+            compileSdkVersion = 35
+            minSdkVersion = 23
+            targetSdkVersion = 35
+            // Create a flutter object for plugins that reference flutter.compileSdkVersion
+            flutter = [
+                compileSdkVersion: 35,
+                minSdkVersion: 23,
+                targetSdkVersion: 35,
+                ndkVersion: "23.1.7779620"
+            ]
+        }
+    }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
