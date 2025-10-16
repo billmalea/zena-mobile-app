@@ -18,11 +18,71 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
+  int _previousMessageCount = 0;
+  bool _isUserScrolling = false;
+  bool _isLoadingHistory = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Track user scroll behavior
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    // Check if user is manually scrolling (not at bottom)
+    final isAtBottom = _scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 50;
+    
+    if (!isAtBottom && !_isLoadingHistory) {
+      _isUserScrolling = true;
+    } else if (isAtBottom) {
+      _isUserScrolling = false;
+    }
+  }
+
+  /// Load conversation history while maintaining scroll position
+  Future<void> _loadConversationHistory(String conversationId) async {
+    final chatProvider = context.read<ChatProvider>();
+    
+    try {
+      _isLoadingHistory = true;
+      
+      // Save current scroll position
+      final scrollPosition = _scrollController.hasClients 
+          ? _scrollController.position.pixels 
+          : 0.0;
+      
+      // Load the conversation
+      await chatProvider.loadConversation(conversationId);
+      
+      // Restore scroll position after loading
+      if (_scrollController.hasClients && scrollPosition > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(scrollPosition);
+          }
+        });
+      } else {
+        // If no previous position, scroll to bottom
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError(context, 'Failed to load conversation: ${e.toString()}');
+      }
+    } finally {
+      _isLoadingHistory = false;
+    }
   }
 
   @override
@@ -35,6 +95,8 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Consumer<ChatProvider>(
               builder: (context, chatProvider, child) {
+                // Auto-scroll to bottom when new messages arrive
+                _handleAutoScroll(chatProvider);
                 return _buildMessageList(chatProvider);
               },
             ),
@@ -74,10 +136,31 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// Handle auto-scroll behavior when messages change
+  void _handleAutoScroll(ChatProvider chatProvider) {
+    final currentMessageCount = chatProvider.messages.length;
+    
+    // Check if messages have changed
+    if (currentMessageCount != _previousMessageCount) {
+      final isNewMessage = currentMessageCount > _previousMessageCount;
+      _previousMessageCount = currentMessageCount;
+      
+      // Auto-scroll to bottom if:
+      // 1. New message arrived AND user is not manually scrolling up
+      // 2. OR we're loading (streaming response)
+      if (isNewMessage && !_isUserScrolling) {
+        _scrollToBottom();
+      } else if (chatProvider.isLoading && !_isUserScrolling) {
+        _scrollToBottom();
+      }
+    }
+  }
+
   /// Build message list with messages and typing indicator
   Widget _buildMessageList(ChatProvider chatProvider) {
     // Show empty state if no messages
     if (chatProvider.messages.isEmpty && !chatProvider.isLoading) {
+      _previousMessageCount = 0;
       return _buildEmptyState();
     }
 
@@ -125,7 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.chat_bubble_outline,
               size: 80,
               color: AppTheme.textTertiary,
@@ -181,10 +264,12 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty) return;
 
     try {
+      // Reset user scrolling flag when sending a new message
+      _isUserScrolling = false;
+      
       await chatProvider.sendMessage(text, fileUrls);
       
-      // Auto-scroll to bottom after sending
-      _scrollToBottom();
+      // Auto-scroll will be handled by _handleAutoScroll
     } catch (e) {
       if (context.mounted) {
         _showError(context, 'Failed to send message: ${e.toString()}');
@@ -222,6 +307,10 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     try {
+      // Reset scroll state
+      _previousMessageCount = 0;
+      _isUserScrolling = false;
+      
       await chatProvider.startNewConversation();
       
       if (context.mounted) {
