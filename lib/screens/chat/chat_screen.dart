@@ -91,6 +91,16 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: _buildAppBar(context),
       body: Column(
         children: [
+          // Error banner (if error exists)
+          Consumer<ChatProvider>(
+            builder: (context, chatProvider, child) {
+              if (chatProvider.error != null) {
+                return _buildErrorBanner(context, chatProvider);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
           // Message list (takes up remaining space)
           Expanded(
             child: Consumer<ChatProvider>(
@@ -230,6 +240,57 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build error banner with dismiss and retry options
+  Widget _buildErrorBanner(BuildContext context, ChatProvider chatProvider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.errorColor.withOpacity(0.1),
+        border: Border(
+          bottom: BorderSide(
+            color: AppTheme.errorColor.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: AppTheme.errorColor,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              chatProvider.error ?? 'An error occurred',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.errorColor,
+                  ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            color: AppTheme.errorColor,
+            tooltip: 'Dismiss',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            onPressed: () {
+              chatProvider.clearError();
+            },
+          ),
+        ],
       ),
     );
   }
