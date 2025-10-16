@@ -171,17 +171,29 @@ This implementation plan breaks down the Flutter mobile app development into dis
   - Manage input state
   - _Requirements: 2, 6, 7_
 
-- [ ] 5.4 Create typing indicator widget
+- [x] 5.4 Create typing indicator widget
+
+
+
+
+
   - Create lib/widgets/chat/typing_indicator.dart
   - Implement animated dots using AnimationController
   - Style to match assistant message bubble
   - _Requirements: 4, 7_
 
-- [ ] 6. Implement Authentication Screens
+- [x] 6. Implement Authentication Screens
+
+
+
+
+
   - Create authentication UI
   - _Requirements: 1_
 
-- [ ] 6.1 Create welcome screen
+
+- [x] 6.1 Create welcome screen
+
   - Create lib/screens/auth/welcome_screen.dart
   - Display app logo and branding
   - Implement Google Sign In button

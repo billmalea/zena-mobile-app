@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
 
-/// Typing indicator widget showing animated dots
-/// Displays when AI assistant is processing a response
+/// A widget that displays an animated typing indicator
+/// Used to show when the AI assistant is composing a response
 class TypingIndicator extends StatefulWidget {
   const TypingIndicator({super.key});
 
@@ -18,11 +17,14 @@ class _TypingIndicatorState extends State<TypingIndicator>
   @override
   void initState() {
     super.initState();
+    
+    // Create animation controller that repeats indefinitely
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1400),
       vsync: this,
     )..repeat();
 
+    // Create a curved animation for smooth dot movement
     _animation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeInOut,
@@ -40,30 +42,21 @@ class _TypingIndicatorState extends State<TypingIndicator>
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        constraints: const BoxConstraints(
-          maxWidth: 80,
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        margin: const EdgeInsets.only(bottom: 8, left: 8, right: 60),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.assistantMessageBg,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(16),
-          ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 4,
+              blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _buildDot(0),
             const SizedBox(width: 4),
@@ -76,22 +69,17 @@ class _TypingIndicatorState extends State<TypingIndicator>
     );
   }
 
-  /// Build animated dot
   Widget _buildDot(int index) {
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        // Calculate delay for each dot
+        // Calculate delay for each dot to create wave effect
         final delay = index * 0.2;
-        final value = (_animation.value - delay).clamp(0.0, 1.0);
+        final value = (_animation.value - delay) % 1.0;
         
-        // Calculate opacity with fade in/out effect
-        final opacity = value < 0.5
-            ? value * 2
-            : (1.0 - value) * 2;
-
-        // Calculate scale with bounce effect
-        final scale = 0.6 + (opacity * 0.4);
+        // Create bounce effect using sine wave
+        final scale = 0.5 + (0.5 * (1 - (value * 2 - 1).abs()));
+        final opacity = 0.3 + (0.7 * scale);
 
         return Transform.scale(
           scale: scale,
@@ -99,7 +87,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: AppTheme.textSecondary.withOpacity(opacity.clamp(0.3, 1.0)),
+              color: Colors.grey.withOpacity(opacity),
               shape: BoxShape.circle,
             ),
           ),
