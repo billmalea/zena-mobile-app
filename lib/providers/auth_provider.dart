@@ -30,20 +30,30 @@ class AuthProvider with ChangeNotifier {
 
   /// Initialize provider and listen to auth state changes
   void _initialize() {
+    print('🚀 [AuthProvider] Initializing...');
+    
     // Set initial user state
     _user = _authService.currentUser;
     _isLoading = false;
+    print('👤 [AuthProvider] Initial user: ${_user?.email ?? "None"}');
     notifyListeners();
 
     // Listen to auth state changes
     _authSubscription = _authService.authStateChanges.listen(
       (AuthState authState) {
+        print('🔄 [AuthProvider] Auth state changed');
+        print('📧 [AuthProvider] User: ${authState.session?.user.email ?? "None"}');
+        print('🎟️ [AuthProvider] Session: ${authState.session != null}');
+        print('📅 [AuthProvider] Event: ${authState.event}');
+        
         _user = authState.session?.user;
         _isLoading = false;
         _error = null;
         notifyListeners();
       },
-      onError: (error) {
+      onError: (error, stackTrace) {
+        print('❌ [AuthProvider] Auth state error: $error');
+        print('📍 [AuthProvider] Stack trace: $stackTrace');
         _error = 'Authentication error: ${error.toString()}';
         _isLoading = false;
         notifyListeners();
@@ -54,14 +64,19 @@ class AuthProvider with ChangeNotifier {
   /// Sign in with Google OAuth
   Future<void> signInWithGoogle() async {
     try {
+      print('🔐 [AuthProvider] Starting sign-in process...');
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      print('📞 [AuthProvider] Calling AuthService.signInWithGoogle()...');
       await _authService.signInWithGoogle();
+      print('✅ [AuthProvider] AuthService.signInWithGoogle() completed');
 
       // State will be updated by authStateChanges listener
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [AuthProvider] Sign-in error: $e');
+      print('📍 [AuthProvider] Stack trace: $stackTrace');
       _error = 'Failed to sign in: ${e.toString()}';
       _isLoading = false;
       notifyListeners();

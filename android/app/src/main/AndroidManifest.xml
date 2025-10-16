@@ -35,12 +35,13 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             
-            <!-- Deep linking for OAuth callback -->
-            <intent-filter>
+            <!-- Deep linking for Supabase OAuth callback -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="zena" android:host="auth-callback"/>
+                <!-- Custom scheme for OAuth -->
+                <data android:scheme="io.supabase.zena" android:host="login-callback"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

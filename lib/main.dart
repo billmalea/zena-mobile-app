@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/app_config.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
@@ -11,6 +12,9 @@ import 'screens/chat/chat_screen.dart';
 /// Main entry point for the Zena mobile app
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env.local");
 
   // Initialize Supabase
   await Supabase.initialize(
@@ -66,11 +70,11 @@ class AuthWrapper extends StatelessWidget {
         }
 
         // Show appropriate screen based on authentication state
-        if (authProvider.isAuthenticated) {
+       // if (authProvider.isAuthenticated) {
           return const ChatScreen();
-        } else {
-          return const WelcomeScreen();
-        }
+      // //  } else {
+      //     return const WelcomeScreen();
+      // //  }
       },
     );
   }

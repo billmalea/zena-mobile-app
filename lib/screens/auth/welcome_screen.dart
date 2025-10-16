@@ -247,11 +247,15 @@ class WelcomeScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
+      print('🔐 [WelcomeScreen] Starting Google Sign-In...');
       await authProvider.signInWithGoogle();
+      print('✅ [WelcomeScreen] Google Sign-In completed successfully');
       // Navigation will be handled by AuthWrapper in main.dart
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Error is already set in AuthProvider
       // UI will update automatically via Consumer
+      print('❌ [WelcomeScreen] Sign-In Error: $e');
+      print('📍 [WelcomeScreen] Stack Trace: $stackTrace');
     }
   }
 }

@@ -46,17 +46,17 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	
-	<!-- Deep linking for OAuth callback -->
+	<!-- Deep linking for Supabase OAuth callback -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.zena.mobile</string>
+			<string>io.supabase.zena</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>zena</string>
+				<string>io.supabase.zena</string>
 			</array>
 		</dict>
 	</array>

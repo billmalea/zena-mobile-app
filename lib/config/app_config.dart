@@ -1,14 +1,33 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Application configuration
 /// Contains API URLs, Supabase credentials, and other app-wide settings
 class AppConfig {
   // Base URLs
-  static const String baseUrl = 'https://zena.live';
-  static const String apiUrl = '$baseUrl/api';
+  static String get baseUrl => dotenv.env['BASE_URL'] ?? 'https://zena.live';
+  static String get apiUrl => '$baseUrl/api';
 
   // Supabase Configuration
-  // TODO: Replace with your actual Supabase credentials
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  static String get supabaseUrl => 
+      dotenv.env['SUPABASE_URL'] ?? _throwMissingEnvError('SUPABASE_URL');
+  static String get supabaseAnonKey => 
+      dotenv.env['SUPABASE_ANON_KEY'] ?? _throwMissingEnvError('SUPABASE_ANON_KEY');
+
+  // Google OAuth Configuration
+  static String get googleWebClientId =>
+      dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? _throwMissingEnvError('GOOGLE_WEB_CLIENT_ID');
+  
+  // iOS Client ID is optional - only needed for iOS builds
+  // Android works without it
+  static String? get googleIosClientId => dotenv.env['GOOGLE_IOS_CLIENT_ID'];
+
+  /// Throw error for missing environment variables
+  static String _throwMissingEnvError(String key) {
+    throw Exception(
+      'Missing required environment variable: $key\n'
+      'Please ensure .env.local file exists and contains $key',
+    );
+  }
 
   // API Endpoints
   static const String chatEndpoint = '/chat';
