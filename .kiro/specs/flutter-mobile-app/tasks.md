@@ -139,7 +139,12 @@ This implementation plan breaks down the Flutter mobile app development into dis
 
 
 
-- [ ] 5.2 Create property card widget
+- [x] 5.2 Create property card widget
+
+
+
+
+
   - Create lib/widgets/chat/property_card.dart
   - Implement property image display with CachedNetworkImage
   - Display property title, location, bedrooms, bathrooms, type
@@ -150,7 +155,12 @@ This implementation plan breaks down the Flutter mobile app development into dis
 
   - _Requirements: 3, 7_
 
-- [ ] 5.3 Create message input widget
+- [x] 5.3 Create message input widget
+
+
+
+
+
   - Create lib/widgets/chat/message_input.dart
   - Implement multi-line TextField
   - Implement attach button for file selection

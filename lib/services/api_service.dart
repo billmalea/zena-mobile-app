@@ -41,7 +41,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(Duration(seconds: AppConfig.requestTimeout));
+          .timeout(const Duration(seconds: AppConfig.requestTimeout));
 
       return _handleResponse(response);
     } catch (e) {
@@ -57,7 +57,7 @@ class ApiService {
 
       final response = await _client
           .get(url, headers: headers)
-          .timeout(Duration(seconds: AppConfig.requestTimeout));
+          .timeout(const Duration(seconds: AppConfig.requestTimeout));
 
       return _handleResponse(response);
     } catch (e) {
@@ -77,7 +77,7 @@ class ApiService {
 
       final streamedResponse = await _client
           .send(request)
-          .timeout(Duration(seconds: AppConfig.requestTimeout));
+          .timeout(const Duration(seconds: AppConfig.requestTimeout));
 
       if (streamedResponse.statusCode != 200) {
         throw ApiException(
