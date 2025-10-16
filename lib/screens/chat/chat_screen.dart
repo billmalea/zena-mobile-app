@@ -5,6 +5,7 @@ import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/property_card.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
+import '../../config/theme.dart';
 
 /// ChatScreen - Main chat interface for interacting with the AI assistant
 /// Displays message history, handles user input, and shows property results
@@ -17,102 +18,32 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _isUserScrolling = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  /// Track if user is manually scrolling
-  void _onScroll() {
-    if (_scrollController.hasClients) {
-      final isAtBottom = _scrollController.position.pixels >=
-          _scrollController.position.maxScrollExtent - 50;
-
-      if (!isAtBottom && !_isUserScrolling) {
-        setState(() {
-          _isUserScrolling = true;
-        });
-      } else if (isAtBottom && _isUserScrolling) {
-        setState(() {
-          _isUserScrolling = false;
-        });
-      }
-    }
-  }
-
-  /// Scroll to bottom of message list
-  void _scrollToBottom({bool animate = true}) {
-    if (!_scrollController.hasClients) return;
-
-    if (animate) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    } else {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Zena'),
-        actions: [
-          // New chat button
-          IconButton(
-            onPressed: () => _handleNewChat(context),
-            icon: const Icon(Icons.add_comment_outlined),
-            tooltip: 'New conversation',
+      appBar: _buildAppBar(context),
+      body: Column(
+        children: [
+          // Message list (takes up remaining space)
+          Expanded(
+            child: Consumer<ChatProvider>(
+              builder: (context, chatProvider, child) {
+                return _buildMessageList(chatProvider);
+              },
+            ),
           ),
-        ],
-      ),
-      body: Consumer<ChatProvider>(
-        builder: (context, chatProvider, child) {
-          // Auto-scroll to bottom when new messages arrive (if not manually scrolling)
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!_isUserScrolling && _scrollController.hasClients) {
-              _scrollToBottom(animate: true);
-            }
-          });
 
-          return Column(
-            children: [
-              // Error display
-              if (chatProvider.error != null) _buildErrorBanner(chatProvider),
-
-              // Message list
-              Expanded(
-                child: Stack(
-                  children: [
-                    _buildMessageList(chatProvider),
-
-                    // Typing indicator
-                    if (chatProvider.isLoading)
-                      const Positioned(
-                        bottom: 8,
-                        left: 0,
-                        right: 0,
-                        child: TypingIndicator(),
-                      ),
-                  ],
-                ),
-              ),
-
-              // Message input
-              MessageInput(
+          // Message input (fixed at bottom)
+          Consumer<ChatProvider>(
+            builder: (context, chatProvider, child) {
+              return MessageInput(
                 onSend: (text, fileUrls) => _handleSendMessage(
                   context,
                   chatProvider,
@@ -120,40 +51,65 @@ class _ChatScreenState extends State<ChatScreen> {
                   fileUrls,
                 ),
                 isLoading: chatProvider.isLoading,
-              ),
-            ],
-          );
-        },
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  /// Build message list widget
-  Widget _buildMessageList(ChatProvider chatProvider) {
-    final messages = chatProvider.messages;
+  /// Build AppBar with title and new chat button
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      title: const Text('Zena'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add_comment_outlined),
+          tooltip: 'New Chat',
+          onPressed: () => _handleNewChat(context),
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
 
-    // Empty state
-    if (messages.isEmpty && !chatProvider.isLoading) {
+  /// Build message list with messages and typing indicator
+  Widget _buildMessageList(ChatProvider chatProvider) {
+    // Show empty state if no messages
+    if (chatProvider.messages.isEmpty && !chatProvider.isLoading) {
       return _buildEmptyState();
     }
 
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: messages.length,
+      itemCount: chatProvider.messages.length + (chatProvider.isLoading ? 1 : 0),
       itemBuilder: (context, index) {
-        final message = messages[index];
+        // Show typing indicator at the end if loading
+        if (index == chatProvider.messages.length) {
+          return const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: TypingIndicator(),
+          );
+        }
 
+        final message = chatProvider.messages[index];
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Text message bubble
-            if (message.content.isNotEmpty) MessageBubble(message: message),
+            // Message bubble for text content
+            if (message.content.isNotEmpty)
+              MessageBubble(message: message),
 
-            // Tool results (property cards)
+            // Property cards for tool results
             if (message.hasToolResults)
               ...message.toolResults!.map((toolResult) {
-                return _buildToolResult(toolResult);
+                if (toolResult.toolName == 'searchProperties') {
+                  return _buildPropertyResults(toolResult.result);
+                }
+                return const SizedBox.shrink();
               }),
           ],
         );
@@ -161,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Build empty state widget
+  /// Build empty state when no messages
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -172,22 +128,21 @@ class _ChatScreenState extends State<ChatScreen> {
             Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: Colors.grey[300],
+              color: AppTheme.textTertiary,
             ),
             const SizedBox(height: 24),
             Text(
               'Start a conversation',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
                   ),
             ),
             const SizedBox(height: 12),
             Text(
               'Ask me about properties, rentals, or anything else!',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[500],
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textTertiary,
                   ),
             ),
           ],
@@ -196,172 +151,79 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Build tool result widget (property cards, etc.)
-  Widget _buildToolResult(dynamic toolResult) {
-    // Check if it's a property search result
-    if (toolResult.toolName == 'searchProperties' ||
-        toolResult.toolName == 'search_properties') {
-      final result = toolResult.result;
-
-      // Handle array of properties
-      if (result['properties'] is List) {
-        final properties = result['properties'] as List;
-
-        return Column(
-          children: properties.map((property) {
-            if (property is Map<String, dynamic>) {
-              return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: PropertyCard(propertyData: property),
-              );
-            }
-            return const SizedBox.shrink();
-          }).toList(),
-        );
-      }
-
-      // Handle single property
-      if (result is Map<String, dynamic>) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: PropertyCard(propertyData: result),
-        );
-      }
+  /// Build property results from tool result
+  Widget _buildPropertyResults(Map<String, dynamic> result) {
+    final properties = result['properties'] as List<dynamic>?;
+    
+    if (properties == null || properties.isEmpty) {
+      return const SizedBox.shrink();
     }
 
-    // For other tool results, show a simple card
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            'Tool: ${toolResult.toolName}',
-            style: Theme.of(context).textTheme.bodyMedium,
+    return Column(
+      children: properties.map((property) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: PropertyCard(
+            propertyData: property as Map<String, dynamic>,
           ),
-        ),
-      ),
+        );
+      }).toList(),
     );
   }
 
-  /// Build error banner widget
-  Widget _buildErrorBanner(ChatProvider chatProvider) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      color: Colors.red[50],
-      child: Row(
-        children: [
-          Icon(
-            Icons.error_outline,
-            color: Colors.red[700],
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              chatProvider.error!,
-              style: TextStyle(
-                color: Colors.red[700],
-                fontSize: 14,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: () => chatProvider.clearError(),
-            icon: const Icon(Icons.close),
-            iconSize: 20,
-            color: Colors.red[700],
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Handle send message
+  /// Handle sending a message
   Future<void> _handleSendMessage(
     BuildContext context,
     ChatProvider chatProvider,
     String text,
     List<String>? fileUrls,
   ) async {
-    if (text.trim().isEmpty && (fileUrls == null || fileUrls.isEmpty)) {
-      return;
-    }
+    if (text.trim().isEmpty) return;
 
     try {
       await chatProvider.sendMessage(text, fileUrls);
-
-      // Scroll to bottom after sending
-      _scrollToBottom(animate: true);
+      
+      // Auto-scroll to bottom after sending
+      _scrollToBottom();
     } catch (e) {
-      // Error is handled by ChatProvider
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send message: ${e.toString()}'),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: () => _handleSendMessage(
-                context,
-                chatProvider,
-                text,
-                fileUrls,
-              ),
-            ),
-          ),
-        );
+        _showError(context, 'Failed to send message: ${e.toString()}');
       }
     }
   }
 
   /// Handle new chat button press
-  void _handleNewChat(BuildContext context) {
+  Future<void> _handleNewChat(BuildContext context) async {
     final chatProvider = context.read<ChatProvider>();
 
     // Show confirmation dialog if there are existing messages
     if (chatProvider.messages.isNotEmpty) {
-      showDialog(
+      final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Start new conversation?'),
+          title: const Text('Start New Chat?'),
           content: const Text(
             'This will clear the current conversation. Are you sure?',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel'),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _startNewConversation(context, chatProvider);
-              },
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
               child: const Text('Start New'),
             ),
           ],
         ),
       );
-    } else {
-      _startNewConversation(context, chatProvider);
-    }
-  }
 
-  /// Start a new conversation
-  Future<void> _startNewConversation(
-    BuildContext context,
-    ChatProvider chatProvider,
-  ) async {
+      if (confirmed != true) return;
+    }
+
     try {
       await chatProvider.startNewConversation();
-
+      
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -373,14 +235,41 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start new conversation: ${e.toString()}'),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showError(context, 'Failed to start new chat: ${e.toString()}');
       }
     }
+  }
+
+  /// Scroll to bottom of message list
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  /// Show error message
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'Dismiss',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
   }
 }
