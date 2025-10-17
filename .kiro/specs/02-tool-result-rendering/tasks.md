@@ -76,7 +76,12 @@
   - Test with sample data
   - _Requirements: 3.1_
 
-- [ ] 6. Create Phone Input Card
+- [x] 6. Create Phone Input Card
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/phone_input_card.dart`
   - Add TextField for phone number input
   - Implement Kenyan phone format validation (+254... or 07... or 01...)
