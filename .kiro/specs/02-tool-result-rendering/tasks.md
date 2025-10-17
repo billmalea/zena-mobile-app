@@ -60,7 +60,12 @@
   - Test with empty search results
   - _Requirements: 2.6_
 
-- [ ] 5. Create Phone Confirmation Card
+- [x] 5. Create Phone Confirmation Card
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/phone_confirmation_card.dart`
   - Display property title and commission amount
   - Show phone number from profile

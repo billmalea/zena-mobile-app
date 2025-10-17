@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/message.dart';
 import 'property_card.dart';
+import 'tool_cards/phone_confirmation_card.dart';
 
 /// Central factory widget for routing tool results to appropriate specialized cards
 ///
@@ -124,19 +125,36 @@ class ToolResultWidget extends StatelessWidget {
     );
   }
 
+  /// Build phone confirmation card
+  Widget _buildPhoneConfirmationCard(BuildContext context) {
+    final phoneNumber = toolResult.result['phoneNumber'] as String? ?? '';
+    final message = toolResult.result['message'] as String? ?? '';
+    final property = toolResult.result['property'] as Map<String, dynamic>? ?? {};
+
+    return PhoneConfirmationCard(
+      phoneNumber: phoneNumber,
+      message: message,
+      property: property,
+      onConfirm: () {
+        if (onSendMessage != null) {
+          onSendMessage!('Yes, use this number');
+        }
+      },
+      onDecline: () {
+        if (onSendMessage != null) {
+          onSendMessage!('No, use different number');
+        }
+      },
+    );
+  }
+
   /// Build contact info result (payment flow)
   Widget _buildContactInfoResult(BuildContext context) {
     final stage = toolResult.result['stage'] as String?;
 
     switch (stage) {
       case 'phone_confirmation':
-        // TODO: Implement PhoneConfirmationCard in Task 5
-        return _buildPlaceholderCard(
-          context,
-          icon: Icons.phone,
-          title: 'Phone Confirmation',
-          message: 'Please confirm your phone number to proceed.',
-        );
+        return _buildPhoneConfirmationCard(context);
 
       case 'phone_input':
         // TODO: Implement PhoneInputCard in Task 6
