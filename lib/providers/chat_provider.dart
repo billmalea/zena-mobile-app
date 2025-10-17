@@ -49,7 +49,7 @@ class ChatProvider with ChangeNotifier {
       final conversation = await _chatService.getConversation(conversationId);
       _conversationId = conversation.id;
       _messages = List.from(conversation.messages);
-      
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -70,7 +70,7 @@ class ChatProvider with ChangeNotifier {
       final conversation = await _chatService.createConversation();
       _conversationId = conversation.id;
       _messages = [];
-      
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -106,15 +106,15 @@ class ChatProvider with ChangeNotifier {
           fileUrls = [];
           for (int i = 0; i < files.length; i++) {
             final file = files[i];
-            
+
             // Update progress
             _uploadProgress = (i / files.length);
             notifyListeners();
-            
+
             // Upload single file
             final urls = await _fileUploadService.uploadFiles([file], userId);
             fileUrls.addAll(urls);
-            
+
             // Update progress
             _uploadProgress = ((i + 1) / files.length);
             notifyListeners();
@@ -131,7 +131,8 @@ class ChatProvider with ChangeNotifier {
       }
 
       // Build message text with file URLs appended
-      String messageText = text.isNotEmpty ? text : 'I uploaded a property video';
+      String messageText =
+          text.isNotEmpty ? text : 'I uploaded a property video';
       if (fileUrls != null && fileUrls.isNotEmpty) {
         messageText += '\n\n[Uploaded files: ${fileUrls.join(', ')}]';
       }
@@ -194,25 +195,37 @@ class ChatProvider with ChangeNotifier {
 
   /// Handle incoming chat events from the stream
   void _handleChatEvent(ChatEvent event, String assistantMessageId) {
-    final messageIndex = _messages.indexWhere((m) => m.id == assistantMessageId);
-    
-    if (messageIndex == -1) return;
+    print('🎯 [ChatProvider] Received event: ${event.type}');
+
+    final messageIndex =
+        _messages.indexWhere((m) => m.id == assistantMessageId);
+
+    if (messageIndex == -1) {
+      print('⚠️ [ChatProvider] Message not found: $assistantMessageId');
+      return;
+    }
 
     final currentMessage = _messages[messageIndex];
 
     if (event.isText && event.content != null) {
-      // Append text content to assistant message
+      print(
+          '💬 [ChatProvider] Updating text content: "${event.content!.substring(0, event.content!.length > 50 ? 50 : event.content!.length)}..."');
+
+      // Replace text content with accumulated text from stream
+      // (ChatService already accumulates text in buffer)
       _messages[messageIndex] = currentMessage.copyWith(
-        content: currentMessage.content + event.content!,
+        content: event.content!,
       );
       notifyListeners();
-    } else if (event.isTool && event.toolResult != null) {
+
+      print('✅ [ChatProvider] Message updated, notified listeners');
+    } else if (event.isToolResult && event.toolResult != null) {
       // Add tool result to assistant message
       final toolResult = ToolResult(
         toolName: event.toolResult!['toolName'] as String? ?? 'unknown',
         result: event.toolResult!,
       );
-      
+
       final updatedToolResults = List<ToolResult>.from(
         currentMessage.toolResults ?? [],
       )..add(toolResult);

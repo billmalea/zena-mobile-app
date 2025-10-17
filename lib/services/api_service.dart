@@ -71,6 +71,9 @@ class ApiService {
       final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
       final headers = await _getHeaders();
 
+      print('🚀 [ApiService] Starting stream request to: $url');
+      print('📤 [ApiService] Request body: ${jsonEncode(body)}');
+
       final request = http.Request('POST', url);
       request.headers.addAll(headers);
       request.body = jsonEncode(body);
@@ -79,6 +82,9 @@ class ApiService {
           .send(request)
           .timeout(const Duration(seconds: AppConfig.requestTimeout));
 
+      print('📡 [ApiService] Response status: ${streamedResponse.statusCode}');
+      print('📋 [ApiService] Response headers: ${streamedResponse.headers}');
+
       if (streamedResponse.statusCode != 200) {
         throw ApiException(
           'Request failed with status: ${streamedResponse.statusCode}',
@@ -86,19 +92,38 @@ class ApiService {
         );
       }
 
+      int chunkCount = 0;
+      int dataLineCount = 0;
+
       // Parse SSE stream
       await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
+        chunkCount++;
+        print('📦 [ApiService] Chunk #$chunkCount received (${chunk.length} bytes)');
+        print('📝 [ApiService] Raw chunk: ${chunk.substring(0, chunk.length > 200 ? 200 : chunk.length)}${chunk.length > 200 ? "..." : ""}');
+        
         final lines = chunk.split('\n');
+        print('📄 [ApiService] Split into ${lines.length} lines');
+        
         for (final line in lines) {
           if (line.startsWith('data: ')) {
+            dataLineCount++;
             final data = line.substring(6).trim();
+            print('✅ [ApiService] Data line #$dataLineCount: $data');
+            
             if (data.isNotEmpty && data != '[DONE]') {
               yield data;
+            } else if (data == '[DONE]') {
+              print('🏁 [ApiService] Stream completed with [DONE] marker');
             }
+          } else if (line.trim().isNotEmpty) {
+            print('⚠️ [ApiService] Non-data line: $line');
           }
         }
       }
+      
+      print('🎉 [ApiService] Stream finished. Total chunks: $chunkCount, Data lines: $dataLineCount');
     } catch (e) {
+      print('❌ [ApiService] Stream error: $e');
       throw _handleError(e);
     }
   }

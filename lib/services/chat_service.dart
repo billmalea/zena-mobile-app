@@ -41,36 +41,268 @@ class ChatService {
         if (conversationId != null) 'conversationId': conversationId,
       };
 
+      // Buffer to accumulate text content
+      String textBuffer = '';
+      int eventCount = 0;
+      int textEventCount = 0;
+      int toolEventCount = 0;
+
+      print('🎬 [ChatService] Starting to process stream events');
+
       await for (final data in _apiService.streamPost(
         AppConfig.chatEndpoint,
         body,
       )) {
-        try {
-          final json = jsonDecode(data) as Map<String, dynamic>;
-          final type = json['type'] as String?;
+        eventCount++;
+        print('🔄 [ChatService] Event #$eventCount: $data');
 
-          if (type == 'text') {
-            yield ChatEvent(
-              type: 'text',
-              content: json['content'] as String?,
-            );
-          } else if (type == 'tool') {
-            yield ChatEvent(
-              type: 'tool',
-              toolResult: json['result'] as Map<String, dynamic>?,
-            );
-          } else if (type == 'error') {
-            yield ChatEvent(
-              type: 'error',
-              content: json['message'] as String? ?? 'An error occurred',
-            );
+        try {
+          // Check if data is JSON object
+          if (data.startsWith('{')) {
+            print('📋 [ChatService] JSON object detected');
+            final json = jsonDecode(data) as Map<String, dynamic>;
+            final type = json['type'] as String?;
+
+            print('📝 [ChatService] Event type: $type');
+            print('🔍 [ChatService] Full JSON keys: ${json.keys.toList()}');
+
+            // Handle different event types from AI SDK UIMessage format
+            if (type == 'text') {
+              // Text part - contains the actual message text
+              final text = json['text'] as String?;
+              if (text != null && text.isNotEmpty) {
+                textBuffer = text; // Replace buffer with full text
+                textEventCount++;
+                print('✅ [ChatService] Text event #$textEventCount: "$text"');
+
+                yield ChatEvent(
+                  type: 'text',
+                  content: textBuffer,
+                );
+              }
+            } else if (type?.startsWith('tool-') == true) {
+              // Tool part - format: tool-{toolName}
+              final toolName = type!.replaceFirst('tool-', '');
+              final state = json['state'] as String?;
+              final output = json['output'];
+              final errorText = json['errorText'] as String?;
+
+              toolEventCount++;
+              print(
+                  '🔧 [ChatService] Tool event #$toolEventCount: $toolName (state: $state)');
+
+              if (state == 'output-available' && output != null) {
+                // Tool execution completed with result
+                print('📊 [ChatService] Tool output available for: $toolName');
+                yield ChatEvent(
+                  type: 'tool-result',
+                  toolResult: {
+                    'toolName': toolName,
+                    'result': output,
+                    'state': state,
+                  },
+                );
+              } else if (state == 'output-error') {
+                // Tool execution failed
+                print('❌ [ChatService] Tool error for $toolName: $errorText');
+                yield ChatEvent(
+                  type: 'error',
+                  content:
+                      'Tool $toolName failed: ${errorText ?? "Unknown error"}',
+                );
+              } else if (state == 'input-streaming' ||
+                  state == 'input-available') {
+                // Tool is being invoked (can show loading state)
+                print('⏳ [ChatService] Tool $toolName is executing...');
+                yield ChatEvent(
+                  type: 'tool-call',
+                  toolResult: {
+                    'toolName': toolName,
+                    'state': state,
+                  },
+                );
+              }
+            } else if (type == 'step-start') {
+              // Metadata event - can be ignored
+              print('📍 [ChatService] Step start (metadata)');
+            } else if (type == 'text-delta') {
+              // Text delta
+              final textDelta = json['textDelta'] as String?;
+              print('📄 [ChatService] textDelta field value: "$textDelta"');
+
+              if (textDelta != null && textDelta.isNotEmpty) {
+                textBuffer += textDelta;
+                textEventCount++;
+                print(
+                    '✅ [ChatService] Text delta #$textEventCount: "$textDelta"');
+                print('📚 [ChatService] Buffer now: "$textBuffer"');
+
+                yield ChatEvent(
+                  type: 'text',
+                  content: textBuffer,
+                );
+              } else {
+                print('⚠️ [ChatService] textDelta is null or empty');
+              }
+            } else if (type == 'tool-call') {
+              // Tool call
+              toolEventCount++;
+              print(
+                  '🔧 [ChatService] Tool call #$toolEventCount in DataStream format');
+              yield ChatEvent(
+                type: 'tool-call',
+                toolResult: json,
+              );
+            } else if (type == 'tool-result') {
+              // Tool result
+              toolEventCount++;
+              print(
+                  '📊 [ChatService] Tool result #$toolEventCount in DataStream format');
+              yield ChatEvent(
+                type: 'tool-result',
+                toolResult: json,
+              );
+            } else if (type == 'finish' || type == 'finish-step') {
+              // Stream finished
+              print('🏁 [ChatService] Stream finish detected: $type');
+              textBuffer = ''; // Reset buffer
+            } else if (type == 'error') {
+              // Error
+              print('❌ [ChatService] Error in DataStream format');
+              yield ChatEvent(
+                type: 'error',
+                content: json['error'] as String? ?? 'An error occurred',
+              );
+            } else {
+              print('⚠️ [ChatService] Unknown DataStream type: $type');
+              print('📦 [ChatService] Full JSON: $json');
+            }
+            continue;
+          }
+
+          // AI SDK toUIMessageStreamResponse format (numbered prefixes):
+          // 0:"text content" - text delta
+          // 2:[...] - tool calls
+          // 8:[...] - tool results
+          // 9:{...} - finish reason
+          // e:{...} - error
+
+          if (data.startsWith('0:')) {
+            print('📝 [ChatService] Text delta detected (UIMessage format)');
+            // Text delta - extract the JSON string
+            final textContent = data.substring(2);
+            print('📄 [ChatService] Text content: $textContent');
+
+            try {
+              final decodedText = jsonDecode(textContent) as String;
+              textBuffer += decodedText;
+              print('✅ [ChatService] Decoded text: "$decodedText"');
+              print('📚 [ChatService] Buffer now: "$textBuffer"');
+
+              // Yield text event with accumulated content
+              yield ChatEvent(
+                type: 'text',
+                content: textBuffer,
+              );
+            } catch (e) {
+              print(
+                  '⚠️ [ChatService] JSON decode failed, treating as plain text: $e');
+              // If JSON decode fails, treat as plain text
+              textBuffer += textContent;
+              yield ChatEvent(
+                type: 'text',
+                content: textBuffer,
+              );
+            }
+          } else if (data.startsWith('2:')) {
+            print('🔧 [ChatService] Tool call detected');
+            // Tool call - extract the JSON array
+            final toolCallsJson = data.substring(2);
+            print('🔧 [ChatService] Tool calls JSON: $toolCallsJson');
+
+            try {
+              final toolCalls = jsonDecode(toolCallsJson) as List;
+              print('✅ [ChatService] Parsed ${toolCalls.length} tool calls');
+
+              for (final toolCall in toolCalls) {
+                print('🛠️ [ChatService] Tool call: ${toolCall['toolName']}');
+                yield ChatEvent(
+                  type: 'tool-call',
+                  toolResult: toolCall as Map<String, dynamic>,
+                );
+              }
+            } catch (e) {
+              print('❌ [ChatService] Failed to parse tool calls: $e');
+              // Skip malformed tool calls
+              continue;
+            }
+          } else if (data.startsWith('8:')) {
+            print('📊 [ChatService] Tool result detected');
+            // Tool result - extract the JSON array
+            final toolResultsJson = data.substring(2);
+            print('📊 [ChatService] Tool results JSON: $toolResultsJson');
+
+            try {
+              final toolResults = jsonDecode(toolResultsJson) as List;
+              print(
+                  '✅ [ChatService] Parsed ${toolResults.length} tool results');
+
+              for (final toolResult in toolResults) {
+                print(
+                    '📦 [ChatService] Tool result: ${toolResult['toolName']}');
+                yield ChatEvent(
+                  type: 'tool-result',
+                  toolResult: toolResult as Map<String, dynamic>,
+                );
+              }
+            } catch (e) {
+              print('❌ [ChatService] Failed to parse tool results: $e');
+              // Skip malformed tool results
+              continue;
+            }
+          } else if (data.startsWith('9:')) {
+            print('🏁 [ChatService] Finish reason detected');
+            // Finish reason - stream is complete
+            textBuffer = ''; // Reset buffer for next message
+          } else if (data.startsWith('e:')) {
+            print('❌ [ChatService] Error detected');
+            // Error
+            final errorJson = data.substring(2);
+            print('❌ [ChatService] Error JSON: $errorJson');
+
+            try {
+              final error = jsonDecode(errorJson) as Map<String, dynamic>;
+              print('⚠️ [ChatService] Error message: ${error['message']}');
+              yield ChatEvent(
+                type: 'error',
+                content: error['message'] as String? ?? 'An error occurred',
+              );
+            } catch (e) {
+              print('❌ [ChatService] Failed to parse error: $e');
+              yield ChatEvent(
+                type: 'error',
+                content: 'An error occurred',
+              );
+            }
+          } else {
+            print(
+                '⚠️ [ChatService] Unknown event type: ${data.substring(0, data.length > 50 ? 50 : data.length)}');
           }
         } catch (e) {
-          // Skip malformed JSON chunks
+          print('❌ [ChatService] Error processing event: $e');
+          // Skip malformed chunks
           continue;
         }
       }
+
+      print('🎬 [ChatService] Stream processing complete');
+      print('📊 [ChatService] Total events: $eventCount');
+      print('📊 [ChatService] Text events: $textEventCount');
+      print('📊 [ChatService] Tool events: $toolEventCount');
+      print('📊 [ChatService] Final text buffer: "$textBuffer"');
+      print('📊 [ChatService] Buffer length: ${textBuffer.length} characters');
     } catch (e) {
+      print('❌ [ChatService] Stream error: $e');
       yield ChatEvent(
         type: 'error',
         content: 'Failed to send message: ${e.toString()}',
@@ -137,7 +369,7 @@ class ChatService {
 
 /// Chat event for streaming responses
 class ChatEvent {
-  final String type; // 'text', 'tool', 'error'
+  final String type; // 'text', 'tool-call', 'tool-result', 'error'
   final String? content;
   final Map<String, dynamic>? toolResult;
 
@@ -148,6 +380,7 @@ class ChatEvent {
   });
 
   bool get isText => type == 'text';
-  bool get isTool => type == 'tool';
+  bool get isToolCall => type == 'tool-call';
+  bool get isToolResult => type == 'tool-result';
   bool get isError => type == 'error';
 }
