@@ -1,6 +1,11 @@
 # Implementation Plan
 
-- [ ] 1. Create Tool Result Widget Factory
+- [x] 1. Create Tool Result Widget Factory
+
+
+
+
+
   - Create `lib/widgets/chat/tool_result_widget.dart` as central factory for routing tool results
   - Implement switch statement on toolName to route to appropriate card
   - Add case for `searchProperties` / `smartSearch` → PropertyCard
@@ -11,7 +16,12 @@
   - Handle null/missing tool result data gracefully
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 2. Update Message Bubble to Render Tool Results
+- [x] 2. Update Message Bubble to Render Tool Results
+
+
+
+
+
   - Update `lib/widgets/chat/message_bubble.dart` to display tool results after message content
   - Add loop to render multiple tool results per message
   - Pass `onSendMessage` callback from ChatScreen to ToolResultWidget

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat/message_bubble.dart';
-import '../../widgets/chat/property_card.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
 
@@ -153,22 +152,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
         final message = chatProvider.messages[index];
         
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Message bubble for text content
-            if (message.content.isNotEmpty)
-              MessageBubble(message: message),
-
-            // Property cards for tool results
-            if (message.hasToolResults)
-              ...message.toolResults!.map((toolResult) {
-                if (toolResult.toolName == 'searchProperties') {
-                  return _buildPropertyResults(toolResult.result);
-                }
-                return const SizedBox.shrink();
-              }),
-          ],
+        // Message bubble now handles both content and tool results
+        return MessageBubble(
+          message: message,
+          onSendMessage: (text) => _handleSendMessage(
+            context,
+            chatProvider,
+            text,
+            null,
+          ),
         );
       },
     );
@@ -261,25 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Build property results from tool result
-  Widget _buildPropertyResults(Map<String, dynamic> result) {
-    final properties = result['properties'] as List<dynamic>?;
-    
-    if (properties == null || properties.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
-    return Column(
-      children: properties.map((property) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: PropertyCard(
-            propertyData: property as Map<String, dynamic>,
-          ),
-        );
-      }).toList(),
-    );
-  }
 
   /// Handle sending a message
   Future<void> _handleSendMessage(
