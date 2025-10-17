@@ -84,9 +84,17 @@ class ChatProvider with ChangeNotifier {
   /// Send a message with streaming support
   /// Uploads files to Supabase Storage and appends URLs to message text
   Future<void> sendMessage(String text, [List<File>? files]) async {
-    if (text.trim().isEmpty && (files == null || files.isEmpty)) return;
+    print('🎬 [ChatProvider] sendMessage called');
+    print('💬 [ChatProvider] Text: $text');
+    print('📁 [ChatProvider] Files: ${files?.length ?? 0}');
+
+    if (text.trim().isEmpty && (files == null || files.isEmpty)) {
+      print('⚠️ [ChatProvider] Empty message, returning');
+      return;
+    }
 
     try {
+      print('🔄 [ChatProvider] Processing message...');
       // Upload files to Supabase Storage and get public URLs
       List<String>? fileUrls;
       if (files != null && files.isNotEmpty) {
@@ -146,10 +154,12 @@ class ChatProvider with ChangeNotifier {
       );
       _messages.add(userMessage);
       _error = null;
+      print('✅ [ChatProvider] User message added: ${userMessage.id}');
       notifyListeners();
 
       // Set loading state
       _isLoading = true;
+      print('⏳ [ChatProvider] Loading state set to true');
       notifyListeners();
 
       // Create assistant message placeholder
@@ -161,30 +171,45 @@ class ChatProvider with ChangeNotifier {
         createdAt: DateTime.now(),
       );
       _messages.add(assistantMessage);
+      print(
+          '✅ [ChatProvider] Assistant message placeholder added: $assistantMessageId');
       notifyListeners();
 
       // Stream the response with message text (URLs already embedded)
+      print('🔄 [ChatProvider] Calling ChatService.sendMessage...');
+      print('📝 [ChatProvider] Message text: $messageText');
+      print('🆔 [ChatProvider] Conversation ID: $_conversationId');
+
       final stream = _chatService.sendMessage(
         message: messageText,
         conversationId: _conversationId,
       );
 
+      print('✅ [ChatProvider] Stream obtained, setting up listener...');
+
       _streamSubscription = stream.listen(
         (ChatEvent event) {
+          print('📥 [ChatProvider] Stream event received: ${event.type}');
           _handleChatEvent(event, assistantMessageId);
         },
         onError: (error) {
+          print('❌ [ChatProvider] Stream error: $error');
           _error = 'Stream error: ${error.toString()}';
           _isLoading = false;
           notifyListeners();
         },
         onDone: () {
+          print('🏁 [ChatProvider] Stream done');
           _isLoading = false;
           notifyListeners();
         },
         cancelOnError: false,
       );
+
+      print('✅ [ChatProvider] Stream listener set up successfully');
     } catch (e) {
+      print('❌ [ChatProvider] Exception caught: $e');
+      print('❌ [ChatProvider] Stack trace: ${StackTrace.current}');
       _error = 'Failed to send message: ${e.toString()}';
       _isLoading = false;
       _isUploadingFiles = false;
@@ -220,6 +245,8 @@ class ChatProvider with ChangeNotifier {
 
       print('✅ [ChatProvider] Message updated, notified listeners');
     } else if (event.isToolResult && event.toolResult != null) {
+      print('🔧 [ChatProvider] Tool result received');
+      
       // Add tool result to assistant message
       final toolResult = ToolResult(
         toolName: event.toolResult!['toolName'] as String? ?? 'unknown',
@@ -230,10 +257,24 @@ class ChatProvider with ChangeNotifier {
         currentMessage.toolResults ?? [],
       )..add(toolResult);
 
+      // If no text content yet, add a default message
+      String content = currentMessage.content;
+      if (content.isEmpty && updatedToolResults.isNotEmpty) {
+        content = 'I found some results for you:';
+        print('💬 [ChatProvider] Adding default text for tool-only response');
+      }
+
       _messages[messageIndex] = currentMessage.copyWith(
+        content: content,
         toolResults: updatedToolResults,
       );
+      
+      print('✅ [ChatProvider] Tool result added, message updated');
+      print('📝 [ChatProvider] Message content: "$content"');
+      print('🔧 [ChatProvider] Tool results count: ${updatedToolResults.length}');
+      print('🔔 [ChatProvider] Calling notifyListeners()');
       notifyListeners();
+      print('✅ [ChatProvider] notifyListeners() called');
     } else if (event.isError) {
       // Handle error event
       _error = event.content ?? 'An error occurred';

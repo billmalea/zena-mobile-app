@@ -38,7 +38,7 @@ class ZenaApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Zena',
-        theme: AppTheme.lightTheme,
+        theme: AppTheme.darkTheme,
         debugShowCheckedModeBanner: false,
         home: const AuthWrapper(),
       ),

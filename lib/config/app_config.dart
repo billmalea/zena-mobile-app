@@ -30,10 +30,10 @@ class AppConfig {
   }
 
   // API Endpoints
-  static const String chatEndpoint = '/chat/';
-  static const String conversationEndpoint = '/chat/conversation/';
-  static const String conversationsEndpoint = '/chat/conversations/';
-  static const String uploadEndpoint = '/upload/';
+  static const String chatEndpoint = '/chat';
+  static const String conversationEndpoint = '/chat/conversation';
+  static const String conversationsEndpoint = '/chat/conversations';
+  static const String uploadEndpoint = '/upload';
 
   // OAuth Configuration
   static const String authCallbackUrl = 'zena://auth-callback';

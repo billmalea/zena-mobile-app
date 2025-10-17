@@ -94,34 +94,60 @@ class ApiService {
 
       int chunkCount = 0;
       int dataLineCount = 0;
+      String buffer = ''; // Buffer for incomplete lines
 
       // Parse SSE stream
-      await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
+      await for (final chunk
+          in streamedResponse.stream.transform(utf8.decoder)) {
         chunkCount++;
-        print('📦 [ApiService] Chunk #$chunkCount received (${chunk.length} bytes)');
-        print('📝 [ApiService] Raw chunk: ${chunk.substring(0, chunk.length > 200 ? 200 : chunk.length)}${chunk.length > 200 ? "..." : ""}');
-        
-        final lines = chunk.split('\n');
-        print('📄 [ApiService] Split into ${lines.length} lines');
-        
-        for (final line in lines) {
+        print(
+            '�  [ApiService] Chunk #$chunkCount received (${chunk.length} bytes)');
+
+        // Add chunk to buffer
+        buffer += chunk;
+
+        // Process complete lines (ending with \n)
+        final lines = buffer.split('\n');
+
+        // Keep the last incomplete line in buffer
+        buffer = lines.last;
+
+        // Process all complete lines (all except the last)
+        for (int i = 0; i < lines.length - 1; i++) {
+          final line = lines[i];
+
           if (line.startsWith('data: ')) {
             dataLineCount++;
             final data = line.substring(6).trim();
-            print('✅ [ApiService] Data line #$dataLineCount: $data');
-            
+
             if (data.isNotEmpty && data != '[DONE]') {
+              print(
+                  '✅ [ApiService] Data line #$dataLineCount: ${data.length > 100 ? data.substring(0, 100) + "..." : data}');
               yield data;
             } else if (data == '[DONE]') {
               print('🏁 [ApiService] Stream completed with [DONE] marker');
             }
-          } else if (line.trim().isNotEmpty) {
-            print('⚠️ [ApiService] Non-data line: $line');
+          } else if (line.trim().isNotEmpty && !line.startsWith(':')) {
+            // Continuation of previous data line (multi-line JSON)
+            // This happens when large JSON spans multiple chunks
+            print('📎 [ApiService] Continuation line (${line.length} bytes)');
           }
         }
       }
-      
-      print('🎉 [ApiService] Stream finished. Total chunks: $chunkCount, Data lines: $dataLineCount');
+
+      // Process any remaining data in buffer
+      if (buffer.trim().isNotEmpty && buffer.startsWith('data: ')) {
+        final data = buffer.substring(6).trim();
+        if (data.isNotEmpty && data != '[DONE]') {
+          dataLineCount++;
+          print(
+              '✅ [ApiService] Final data line #$dataLineCount: ${data.length > 100 ? data.substring(0, 100) + "..." : data}');
+          yield data;
+        }
+      }
+
+      print(
+          '🎉 [ApiService] Stream finished. Total chunks: $chunkCount, Data lines: $dataLineCount');
     } catch (e) {
       print('❌ [ApiService] Stream error: $e');
       throw _handleError(e);
