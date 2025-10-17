@@ -111,11 +111,11 @@ class FileUploadService {
   /// Validate file size
   ///
   /// [file] - File to validate
-  /// [maxSizeBytes] - Maximum allowed size in bytes (default 10MB)
+  /// [maxSizeBytes] - Maximum allowed size in bytes (default 50MB)
   ///
   /// Returns true if file size is valid
   Future<bool> validateFileSize(File file,
-      {int maxSizeBytes = 10485760}) async {
+      {int maxSizeBytes = 52428800}) async {
     try {
       final fileSize = await file.length();
       return fileSize <= maxSizeBytes;

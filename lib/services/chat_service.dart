@@ -2,24 +2,29 @@ import 'dart:convert';
 import '../config/app_config.dart';
 import '../models/conversation.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
 
 /// Chat Service for handling chat operations
 /// Manages conversations and message streaming
 class ChatService {
   final _apiService = ApiService();
+  final _authService = AuthService();
+
+  /// Get current user ID
+  String? getUserId() {
+    return _authService.currentUser?.id;
+  }
 
   /// Send a message and stream the response
-  /// Supports AI SDK format with message parts (text + files)
+  /// Message text may contain embedded file URLs
   Stream<ChatEvent> sendMessage({
     required String message,
     String? conversationId,
-    List<Map<String, dynamic>>? fileParts,
   }) async* {
     try {
       // Build message parts (AI SDK format)
       final messageParts = <Map<String, dynamic>>[
         {'type': 'text', 'text': message},
-        if (fileParts != null) ...fileParts,
       ];
 
       // Build messages array (AI SDK format)

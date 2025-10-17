@@ -223,7 +223,7 @@ class FileUploadResult {
 ### Error Types
 
 1. **File Size Error**
-   - Message: "File size exceeds 10MB limit"
+   - Message: "File size exceeds 50MB limit"
    - Action: Show error snackbar, prevent upload
 
 2. **File Format Error**

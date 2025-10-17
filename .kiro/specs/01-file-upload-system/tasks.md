@@ -9,7 +9,7 @@ The following tasks have already been implemented:
   - ✅ Upload files to `property-media` bucket with unique filename generation
   - ✅ Convert files to base64 data URLs for AI SDK compatibility
   - ✅ MIME type detection based on file extension
-  - ✅ File size validation method (max 10MB)
+  - ✅ File size validation method (max 50MB)
   - ✅ File format validation method (mp4, mov, avi, webm)
 
 - [x] 2. Create File Upload Bottom Sheet - COMPLETED
@@ -45,39 +45,62 @@ The following tasks have already been implemented:
 
 ## 🔧 Remaining Tasks
 
-- [ ] 1. Fix File URL Handling in Chat Provider
+- [x] 1. Fix File URL Handling in Chat Provider
+
+
+
+
+
   - Update `lib/providers/chat_provider.dart` to append file URLs to message text
   - Modify message text to include uploaded file URLs in format: `\n\n[Uploaded files: url1, url2]`
   - Remove `fileUrls` parameter from ChatService.sendMessage call
   - Test that backend receives and processes file URLs correctly
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 2. Update Chat Service
+- [x] 2. Update Chat Service
+
+
+
+
   - Update `lib/services/chat_service.dart` to remove `fileUrls` parameter from sendMessage method
   - Remove `fileUrls` from request body (URLs now in message text)
   - _Requirements: 2.1, 2.6_
 
-- [ ] 3. Configure Platform Permissions
+- [x] 3. Configure Platform Permissions
+
+
+
+
+
   - Verify `android/app/src/main/AndroidManifest.xml` has camera and storage permissions
   - Verify `ios/Runner/Info.plist` has camera and photo library usage descriptions
   - Test permission request flow on Android
   - Test permission request flow on iOS
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 4. Configure Supabase Storage Bucket
+
+- [x] 4. Configure Supabase Storage Bucket
+
+
+
+
   - Verify `property-media` bucket exists in Supabase Storage
   - Configure bucket policies to allow authenticated uploads to user folders
   - Configure bucket policies to allow public read access
   - Test bucket access with sample file upload
   - _Requirements: 2.1, 2.2_
 
-- [ ] 5. End-to-End Integration Testing
+- [ x] 5. End-to-End Integration Testing
+
+
+
+
   - Test complete file upload flow from chat screen
   - Test camera video recording on Android device
   - Test camera video recording on iOS device
   - Test gallery video selection on Android device
   - Test gallery video selection on iOS device
-  - Test file size validation with files over 10MB
+  - Test file size validation with files over 50MB
   - Test file format validation with unsupported formats
   - Test upload progress indicator updates correctly
   - Test multiple file uploads (2-3 files)

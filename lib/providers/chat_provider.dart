@@ -82,13 +82,13 @@ class ChatProvider with ChangeNotifier {
   }
 
   /// Send a message with streaming support
-  /// Converts files to data URLs and sends as message parts (AI SDK format)
+  /// Uploads files to Supabase Storage and appends URLs to message text
   Future<void> sendMessage(String text, [List<File>? files]) async {
     if (text.trim().isEmpty && (files == null || files.isEmpty)) return;
 
     try {
-      // Convert files to data URLs if provided
-      List<Map<String, dynamic>>? fileParts;
+      // Upload files to Supabase Storage and get public URLs
+      List<String>? fileUrls;
       if (files != null && files.isNotEmpty) {
         _isUploadingFiles = true;
         _uploadProgress = 0.0;
@@ -96,30 +96,31 @@ class ChatProvider with ChangeNotifier {
         notifyListeners();
 
         try {
-          fileParts = [];
+          // Get user ID from Supabase auth
+          final userId = _chatService.getUserId();
+          if (userId == null) {
+            throw Exception('User not authenticated');
+          }
+
+          // Upload files and track progress
+          fileUrls = [];
           for (int i = 0; i < files.length; i++) {
             final file = files[i];
             
             // Update progress
-            _uploadProgress = (i / files.length) * 0.5;
+            _uploadProgress = (i / files.length);
             notifyListeners();
             
-            // Convert file to data URL
-            final dataUrl = await _fileUploadService.fileToDataUrl(file);
-            final mimeType = _fileUploadService.getContentType(file.path);
-            
-            fileParts.add({
-              'type': 'file',
-              'mediaType': mimeType,
-              'url': dataUrl,
-            });
+            // Upload single file
+            final urls = await _fileUploadService.uploadFiles([file], userId);
+            fileUrls.addAll(urls);
             
             // Update progress
-            _uploadProgress = ((i + 1) / files.length) * 0.5 + 0.5;
+            _uploadProgress = ((i + 1) / files.length);
             notifyListeners();
           }
         } catch (e) {
-          _error = 'Failed to process files: ${e.toString()}';
+          _error = 'Failed to upload files: ${e.toString()}';
           _isUploadingFiles = false;
           notifyListeners();
           rethrow;
@@ -129,11 +130,17 @@ class ChatProvider with ChangeNotifier {
         }
       }
 
+      // Build message text with file URLs appended
+      String messageText = text.isNotEmpty ? text : 'I uploaded a property video';
+      if (fileUrls != null && fileUrls.isNotEmpty) {
+        messageText += '\n\n[Uploaded files: ${fileUrls.join(', ')}]';
+      }
+
       // Add user message immediately
       final userMessage = Message(
         id: _uuid.v4(),
         role: 'user',
-        content: text.isNotEmpty ? text : 'Uploaded ${files?.length ?? 0} video(s)',
+        content: messageText,
         createdAt: DateTime.now(),
       );
       _messages.add(userMessage);
@@ -155,11 +162,10 @@ class ChatProvider with ChangeNotifier {
       _messages.add(assistantMessage);
       notifyListeners();
 
-      // Stream the response with file parts
+      // Stream the response with message text (URLs already embedded)
       final stream = _chatService.sendMessage(
-        message: text.isNotEmpty ? text : 'I uploaded a property video',
+        message: messageText,
         conversationId: _conversationId,
-        fileParts: fileParts,
       );
 
       _streamSubscription = stream.listen(

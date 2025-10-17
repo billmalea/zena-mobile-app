@@ -63,11 +63,15 @@
 	
 	<!-- Camera permission -->
 	<key>NSCameraUsageDescription</key>
-	<string>Zena needs access to your camera to capture property photos</string>
+	<string>Zena needs access to your camera to record property videos</string>
 	
 	<!-- Photo library permission -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Zena needs access to your photo library to select property images</string>
+	<string>Zena needs access to your photo library to select property videos</string>
+	
+	<!-- Microphone permission for video recording -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Zena needs access to your microphone to record audio with property videos</string>
 	
 	<!-- Minimum iOS version -->
 	<key>MinimumOSVersion</key>

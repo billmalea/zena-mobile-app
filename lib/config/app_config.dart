@@ -40,6 +40,6 @@ class AppConfig {
 
   // App Settings
   static const int requestTimeout = 30; // seconds
-  static const int maxFileSize = 10 * 1024 * 1024; // 10MB
+  static const int maxFileSize = 50 * 1024 * 1024; // 50MB (matches Supabase bucket limit)
   static const int maxMemoryUsage = 200 * 1024 * 1024; // 200MB
 }

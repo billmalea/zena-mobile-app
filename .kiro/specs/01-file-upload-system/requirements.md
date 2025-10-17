@@ -18,7 +18,7 @@ The File Upload System enables users to upload property videos for submission th
 2. WHEN the user selects the camera option THEN the system SHALL open the device camera for video recording
 3. WHEN the user selects the gallery option THEN the system SHALL open the device gallery for video selection
 4. WHEN the user records a video THEN the system SHALL limit recording duration to 2 minutes maximum
-5. IF the video file size exceeds 10MB THEN the system SHALL display a validation error message
+5. IF the video file size exceeds 50MB THEN the system SHALL display a validation error message
 6. WHEN a video is selected THEN the system SHALL display a preview thumbnail with file information
 
 ### Requirement 2: File Upload to Storage
