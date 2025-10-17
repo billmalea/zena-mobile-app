@@ -33,6 +33,11 @@ class AuthService {
     return session?.accessToken;
   }
 
+  /// Get current user ID
+  Future<String?> getCurrentUserId() async {
+    return currentUser?.id;
+  }
+
   /// Sign in with Google using native Google Sign-In
   /// This provides a better UX than web-based OAuth
   Future<void> signInWithGoogle() async {

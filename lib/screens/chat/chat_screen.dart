@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../../providers/chat_provider.dart';
 import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/property_card.dart';
@@ -79,13 +80,13 @@ class _ChatScreenState extends State<ChatScreen> {
           Consumer<ChatProvider>(
             builder: (context, chatProvider, child) {
               return MessageInput(
-                onSend: (text, fileUrls) => _handleSendMessage(
+                onSend: (text, files) => _handleSendMessage(
                   context,
                   chatProvider,
                   text,
-                  fileUrls,
+                  files,
                 ),
-                isLoading: chatProvider.isLoading,
+                isLoading: chatProvider.isLoading || chatProvider.isUploadingFiles,
               );
             },
           ),
@@ -285,15 +286,15 @@ class _ChatScreenState extends State<ChatScreen> {
     BuildContext context,
     ChatProvider chatProvider,
     String text,
-    List<String>? fileUrls,
+    List<File>? files,
   ) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty && (files == null || files.isEmpty)) return;
 
     try {
       // Reset user scrolling flag when sending a new message
       _isUserScrolling = false;
       
-      await chatProvider.sendMessage(text, fileUrls);
+      await chatProvider.sendMessage(text, files);
       
       // Auto-scroll will be handled by _handleAutoScroll
     } catch (e) {

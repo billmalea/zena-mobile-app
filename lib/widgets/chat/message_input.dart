@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'file_upload_bottom_sheet.dart';
 
 /// MessageInput widget for composing and sending chat messages
 /// Supports multi-line text input and file attachments
 class MessageInput extends StatefulWidget {
-  final Function(String text, List<String>? fileUrls) onSend;
+  final Function(String text, List<File>? files) onSend;
   final bool isLoading;
 
   const MessageInput({
@@ -21,9 +21,8 @@ class MessageInput extends StatefulWidget {
 class _MessageInputState extends State<MessageInput> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final ImagePicker _imagePicker = ImagePicker();
   
-  List<XFile> _selectedFiles = [];
+  List<File> _attachedFiles = [];
   bool _isSending = false;
 
   @override
@@ -37,7 +36,7 @@ class _MessageInputState extends State<MessageInput> {
   bool get _canSend {
     return !_isSending && 
            !widget.isLoading && 
-           (_textController.text.trim().isNotEmpty || _selectedFiles.isNotEmpty);
+           (_textController.text.trim().isNotEmpty || _attachedFiles.isNotEmpty);
   }
 
   /// Handle send button press
@@ -45,28 +44,17 @@ class _MessageInputState extends State<MessageInput> {
     if (!_canSend) return;
 
     final text = _textController.text.trim();
-    final files = List<XFile>.from(_selectedFiles);
+    final files = _attachedFiles.isNotEmpty ? List<File>.from(_attachedFiles) : null;
 
     // Clear input immediately for better UX
     _textController.clear();
     setState(() {
-      _selectedFiles = [];
+      _attachedFiles = [];
       _isSending = true;
     });
 
     try {
-      // In a real implementation, files would be uploaded first
-      // For now, we'll pass null for fileUrls
-      // The actual upload logic would be in the ChatProvider
-      List<String>? fileUrls;
-      
-      if (files.isNotEmpty) {
-        // TODO: Upload files and get URLs
-        // fileUrls = await _uploadFiles(files);
-        fileUrls = files.map((f) => f.path).toList();
-      }
-
-      widget.onSend(text, fileUrls);
+      widget.onSend(text, files);
     } finally {
       if (mounted) {
         setState(() {
@@ -76,110 +64,29 @@ class _MessageInputState extends State<MessageInput> {
     }
   }
 
-  /// Handle attach button press - show options
-  Future<void> _handleAttach() async {
-    final result = await showModalBottomSheet<String>(
+  /// Show file upload bottom sheet
+  void _showFileUploadSheet() {
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => _buildAttachmentOptions(),
-    );
-
-    if (result == null) return;
-
-    if (result == 'camera') {
-      await _pickFromCamera();
-    } else if (result == 'gallery') {
-      await _pickFromGallery();
-    }
-  }
-
-  /// Build attachment options bottom sheet
-  Widget _buildAttachmentOptions() {
-    final theme = Theme.of(context);
-    
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera_alt, color: theme.colorScheme.primary),
-              title: const Text('Take Photo'),
-              onTap: () => Navigator.pop(context, 'camera'),
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_library, color: theme.colorScheme.primary),
-              title: const Text('Choose from Gallery'),
-              onTap: () => Navigator.pop(context, 'gallery'),
-            ),
-          ],
-        ),
+      builder: (context) => FileUploadBottomSheet(
+        onFilesSelected: (files) {
+          setState(() {
+            _attachedFiles = files;
+          });
+        },
       ),
     );
-  }
-
-  /// Pick image from camera
-  Future<void> _pickFromCamera() async {
-    try {
-      final XFile? photo = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
-
-      if (photo != null) {
-        setState(() {
-          _selectedFiles.add(photo);
-        });
-      }
-    } catch (e) {
-      _showError('Failed to capture photo: $e');
-    }
-  }
-
-  /// Pick images from gallery
-  Future<void> _pickFromGallery() async {
-    try {
-      final List<XFile> images = await _imagePicker.pickMultiImage(
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
-
-      if (images.isNotEmpty) {
-        setState(() {
-          _selectedFiles.addAll(images);
-        });
-      }
-    } catch (e) {
-      _showError('Failed to select images: $e');
-    }
   }
 
   /// Remove file from selection
   void _removeFile(int index) {
     setState(() {
-      _selectedFiles.removeAt(index);
+      _attachedFiles.removeAt(index);
     });
-  }
-
-  /// Show error message
-  void _showError(String message) {
-    if (!mounted) return;
-    
-    final theme = Theme.of(context);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: theme.colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override
@@ -202,7 +109,7 @@ class _MessageInputState extends State<MessageInput> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // File previews
-            if (_selectedFiles.isNotEmpty) _buildFilePreviews(),
+            if (_attachedFiles.isNotEmpty) _buildFilePreviews(),
 
             // Input row
             Padding(
@@ -212,10 +119,10 @@ class _MessageInputState extends State<MessageInput> {
                 children: [
                   // Attach button
                   IconButton(
-                    onPressed: widget.isLoading ? null : _handleAttach,
+                    onPressed: widget.isLoading ? null : _showFileUploadSheet,
                     icon: const Icon(Icons.attach_file),
                     color: theme.colorScheme.primary,
-                    tooltip: 'Attach file',
+                    tooltip: 'Attach video',
                   ),
 
                   const SizedBox(width: 8),
@@ -305,65 +212,89 @@ class _MessageInputState extends State<MessageInput> {
   /// Build file preview section
   Widget _buildFilePreviews() {
     return Container(
-      height: 100,
+      height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _selectedFiles.length,
-        itemBuilder: (context, index) {
-          return _buildFilePreview(_selectedFiles[index], index);
-        },
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _attachedFiles.length,
+              itemBuilder: (context, index) {
+                return _buildFilePreview(_attachedFiles[index], index);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
   /// Build individual file preview
-  Widget _buildFilePreview(XFile file, int index) {
+  Widget _buildFilePreview(File file, int index) {
     final theme = Theme.of(context);
     
     return Container(
-      width: 80,
+      width: 60,
+      height: 60,
       margin: const EdgeInsets.only(right: 8),
       child: Stack(
         children: [
-          // Image preview
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.file(
-              File(file.path),
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 80,
-                  height: 80,
-                  color: theme.scaffoldBackgroundColor,
-                  child: Icon(
-                    Icons.broken_image,
-                    color: theme.disabledColor,
-                  ),
-                );
-              },
+          // Video icon container
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.video_file,
+                  size: 24,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(height: 2),
+                FutureBuilder<int>(
+                  future: file.length(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      final sizeMB = snapshot.data! / (1024 * 1024);
+                      return Text(
+                        '${sizeMB.toStringAsFixed(1)}MB',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 9,
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
             ),
           ),
 
           // Remove button
           Positioned(
-            top: 4,
-            right: 4,
+            top: -6,
+            right: -6,
             child: GestureDetector(
               onTap: () => _removeFile(index),
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.error,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.close,
-                  size: 16,
-                  color: theme.colorScheme.surface,
+                  size: 14,
+                  color: theme.colorScheme.onError,
                 ),
               ),
             ),

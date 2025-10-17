@@ -9,16 +9,31 @@ class ChatService {
   final _apiService = ApiService();
 
   /// Send a message and stream the response
+  /// Supports AI SDK format with message parts (text + files)
   Stream<ChatEvent> sendMessage({
     required String message,
     String? conversationId,
-    List<String>? fileUrls,
+    List<Map<String, dynamic>>? fileParts,
   }) async* {
     try {
+      // Build message parts (AI SDK format)
+      final messageParts = <Map<String, dynamic>>[
+        {'type': 'text', 'text': message},
+        if (fileParts != null) ...fileParts,
+      ];
+
+      // Build messages array (AI SDK format)
+      final messages = [
+        {
+          'id': 'msg-${DateTime.now().millisecondsSinceEpoch}',
+          'role': 'user',
+          'parts': messageParts,
+        }
+      ];
+
       final body = {
-        'message': message,
+        'messages': messages,
         if (conversationId != null) 'conversationId': conversationId,
-        if (fileUrls != null && fileUrls.isNotEmpty) 'fileUrls': fileUrls,
       };
 
       await for (final data in _apiService.streamPost(

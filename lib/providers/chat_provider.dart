@@ -1,18 +1,23 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:io';
+import 'dart:async';
 import '../models/message.dart';
 import '../services/chat_service.dart';
-import 'dart:async';
+import '../services/file_upload_service.dart';
 
 /// Chat Provider for managing chat state and messages
 /// Uses ChangeNotifier to notify UI of chat changes
 class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
+  final FileUploadService _fileUploadService = FileUploadService();
   final _uuid = const Uuid();
 
   List<Message> _messages = [];
   String? _conversationId;
   bool _isLoading = false;
+  bool _isUploadingFiles = false;
+  double _uploadProgress = 0.0;
   String? _error;
   StreamSubscription<ChatEvent>? _streamSubscription;
 
@@ -24,6 +29,12 @@ class ChatProvider with ChangeNotifier {
 
   /// Check if chat is loading
   bool get isLoading => _isLoading;
+
+  /// Check if files are being uploaded
+  bool get isUploadingFiles => _isUploadingFiles;
+
+  /// Get upload progress (0.0 to 1.0)
+  double get uploadProgress => _uploadProgress;
 
   /// Get current error message
   String? get error => _error;
@@ -71,15 +82,58 @@ class ChatProvider with ChangeNotifier {
   }
 
   /// Send a message with streaming support
-  Future<void> sendMessage(String text, [List<String>? fileUrls]) async {
-    if (text.trim().isEmpty) return;
+  /// Converts files to data URLs and sends as message parts (AI SDK format)
+  Future<void> sendMessage(String text, [List<File>? files]) async {
+    if (text.trim().isEmpty && (files == null || files.isEmpty)) return;
 
     try {
+      // Convert files to data URLs if provided
+      List<Map<String, dynamic>>? fileParts;
+      if (files != null && files.isNotEmpty) {
+        _isUploadingFiles = true;
+        _uploadProgress = 0.0;
+        _error = null;
+        notifyListeners();
+
+        try {
+          fileParts = [];
+          for (int i = 0; i < files.length; i++) {
+            final file = files[i];
+            
+            // Update progress
+            _uploadProgress = (i / files.length) * 0.5;
+            notifyListeners();
+            
+            // Convert file to data URL
+            final dataUrl = await _fileUploadService.fileToDataUrl(file);
+            final mimeType = _fileUploadService.getContentType(file.path);
+            
+            fileParts.add({
+              'type': 'file',
+              'mediaType': mimeType,
+              'url': dataUrl,
+            });
+            
+            // Update progress
+            _uploadProgress = ((i + 1) / files.length) * 0.5 + 0.5;
+            notifyListeners();
+          }
+        } catch (e) {
+          _error = 'Failed to process files: ${e.toString()}';
+          _isUploadingFiles = false;
+          notifyListeners();
+          rethrow;
+        } finally {
+          _isUploadingFiles = false;
+          notifyListeners();
+        }
+      }
+
       // Add user message immediately
       final userMessage = Message(
         id: _uuid.v4(),
         role: 'user',
-        content: text,
+        content: text.isNotEmpty ? text : 'Uploaded ${files?.length ?? 0} video(s)',
         createdAt: DateTime.now(),
       );
       _messages.add(userMessage);
@@ -101,11 +155,11 @@ class ChatProvider with ChangeNotifier {
       _messages.add(assistantMessage);
       notifyListeners();
 
-      // Stream the response
+      // Stream the response with file parts
       final stream = _chatService.sendMessage(
-        message: text,
+        message: text.isNotEmpty ? text : 'I uploaded a property video',
         conversationId: _conversationId,
-        fileUrls: fileUrls,
+        fileParts: fileParts,
       );
 
       _streamSubscription = stream.listen(
@@ -126,6 +180,7 @@ class ChatProvider with ChangeNotifier {
     } catch (e) {
       _error = 'Failed to send message: ${e.toString()}';
       _isLoading = false;
+      _isUploadingFiles = false;
       notifyListeners();
       rethrow;
     }
