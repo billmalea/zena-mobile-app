@@ -50,17 +50,17 @@ class PropertyCard extends StatelessWidget {
                 // Location
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_on,
                       size: 16,
-                      color: Colors.grey,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         property.location,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[700],
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -98,7 +98,7 @@ class PropertyCard extends StatelessWidget {
                 Text(
                   property.formattedRent,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: const Color(0xFF10B981),
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
                 ),
@@ -106,7 +106,7 @@ class PropertyCard extends StatelessWidget {
                 Text(
                   'per month',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                 ),
                 const SizedBox(height: 16),
@@ -118,14 +118,6 @@ class PropertyCard extends StatelessWidget {
                     onPressed: () => _handleContactPress(context, property),
                     icon: const Icon(Icons.phone),
                     label: const Text('Contact Agent'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
                   ),
                 ),
               ],
@@ -167,48 +159,55 @@ class PropertyCard extends StatelessWidget {
     String message, {
     bool showProgress = false,
   }) {
-    return Container(
-      height: 200,
-      width: double.infinity,
-      color: Colors.grey[200],
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 48,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 14,
-            ),
-          ),
-          if (showProgress) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[400]!),
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        
+        return Container(
+          height: 200,
+          width: double.infinity,
+          color: theme.colorScheme.surfaceContainerHighest,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 48,
+                color: theme.disabledColor,
               ),
-            ),
-          ],
-        ],
-      ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+              if (showProgress) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.disabledColor),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
   /// Build detail chip for property attributes
   Widget _buildDetailChip(BuildContext context, IconData icon, String label) {
+    final theme = Theme.of(context);
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -217,13 +216,13 @@ class PropertyCard extends StatelessWidget {
           Icon(
             icon,
             size: 16,
-            color: Colors.grey[700],
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[700],
+            style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                   fontWeight: FontWeight.w500,
                 ),
           ),

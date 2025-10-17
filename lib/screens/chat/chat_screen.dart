@@ -5,7 +5,6 @@ import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/property_card.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
-import '../../config/theme.dart';
 
 /// ChatScreen - Main chat interface for interacting with the AI assistant
 /// Displays message history, handles user input, and shows property results
@@ -20,7 +19,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   int _previousMessageCount = 0;
   bool _isUserScrolling = false;
-  bool _isLoadingHistory = false;
 
   @override
   void initState() {
@@ -43,45 +41,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final isAtBottom = _scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 50;
     
-    if (!isAtBottom && !_isLoadingHistory) {
+    if (!isAtBottom) {
       _isUserScrolling = true;
     } else if (isAtBottom) {
       _isUserScrolling = false;
-    }
-  }
-
-  /// Load conversation history while maintaining scroll position
-  Future<void> _loadConversationHistory(String conversationId) async {
-    final chatProvider = context.read<ChatProvider>();
-    
-    try {
-      _isLoadingHistory = true;
-      
-      // Save current scroll position
-      final scrollPosition = _scrollController.hasClients 
-          ? _scrollController.position.pixels 
-          : 0.0;
-      
-      // Load the conversation
-      await chatProvider.loadConversation(conversationId);
-      
-      // Restore scroll position after loading
-      if (_scrollController.hasClients && scrollPosition > 0) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(scrollPosition);
-          }
-        });
-      } else {
-        // If no previous position, scroll to bottom
-        _scrollToBottom();
-      }
-    } catch (e) {
-      if (mounted) {
-        _showError(context, 'Failed to load conversation: ${e.toString()}');
-      }
-    } finally {
-      _isLoadingHistory = false;
     }
   }
 
@@ -218,16 +181,16 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.chat_bubble_outline,
               size: 80,
-              color: AppTheme.textTertiary,
+              color: Theme.of(context).disabledColor,
             ),
             const SizedBox(height: 24),
             Text(
               'Start a conversation',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
             ),
             const SizedBox(height: 12),
@@ -235,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
               'Ask me about properties, rentals, or anything else!',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textTertiary,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                   ),
             ),
           ],
@@ -246,14 +209,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// Build error banner with dismiss and retry options
   Widget _buildErrorBanner(BuildContext context, ChatProvider chatProvider) {
+    final theme = Theme.of(context);
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.errorColor.withOpacity(0.1),
+        color: theme.colorScheme.error.withOpacity(0.1),
         border: Border(
           bottom: BorderSide(
-            color: AppTheme.errorColor.withOpacity(0.3),
+            color: theme.colorScheme.error.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -262,15 +227,15 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Icon(
             Icons.error_outline,
-            color: AppTheme.errorColor,
+            color: theme.colorScheme.error,
             size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               chatProvider.error ?? 'An error occurred',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.errorColor,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
                   ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -279,7 +244,7 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.close, size: 20),
-            color: AppTheme.errorColor,
+            color: theme.colorScheme.error,
             tooltip: 'Dismiss',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(
@@ -407,10 +372,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// Show error message
   void _showError(BuildContext context, String message) {
+    final theme = Theme.of(context);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppTheme.errorColor,
+        backgroundColor: theme.colorScheme.error,
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'Dismiss',

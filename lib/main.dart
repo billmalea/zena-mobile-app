@@ -57,12 +57,12 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, authProvider, child) {
         // Show loading indicator while checking auth state
         if (authProvider.isLoading) {
-          return const Scaffold(
-            backgroundColor: AppTheme.backgroundColor,
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             body: Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  AppTheme.primaryColor,
+                  Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),

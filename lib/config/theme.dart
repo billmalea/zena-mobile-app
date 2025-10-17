@@ -14,14 +14,14 @@ class AppTheme {
   static const Color secondaryDark = Color(0xFF0D9488); // Teal-600
 
   // Background Colors
-  static const Color backgroundColor = Color(0xFFF9FAFB); // Gray-50
+  static const Color backgroundColor = Color(0xFFFAFAFA); // Faded white
   static const Color surfaceColor = Color(0xFFFFFFFF); // White
   static const Color cardColor = Color(0xFFFFFFFF); // White
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFF111827); // Gray-900
-  static const Color textSecondary = Color(0xFF6B7280); // Gray-500
-  static const Color textTertiary = Color(0xFF9CA3AF); // Gray-400
+  // Text Colors - Faded Black Scheme
+  static const Color textPrimary = Color(0xFF0A0A0A); // Faded black (primary text)
+  static const Color textSecondary = Color(0xFF404040); // Faded black (secondary text)
+  static const Color textTertiary = Color(0xFF737373); // Faded black (tertiary text)
 
   // Message Bubble Colors
   static const Color userMessageBg = Color(0xFF10B981); // Emerald-500

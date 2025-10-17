@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../../config/theme.dart';
 
 /// MessageInput widget for composing and sending chat messages
 /// Supports multi-line text input and file attachments
@@ -98,6 +97,8 @@ class _MessageInputState extends State<MessageInput> {
 
   /// Build attachment options bottom sheet
   Widget _buildAttachmentOptions() {
+    final theme = Theme.of(context);
+    
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -105,12 +106,12 @@ class _MessageInputState extends State<MessageInput> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppTheme.primaryColor),
+              leading: Icon(Icons.camera_alt, color: theme.colorScheme.primary),
               title: const Text('Take Photo'),
               onTap: () => Navigator.pop(context, 'camera'),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library, color: AppTheme.primaryColor),
+              leading: Icon(Icons.photo_library, color: theme.colorScheme.primary),
               title: const Text('Choose from Gallery'),
               onTap: () => Navigator.pop(context, 'gallery'),
             ),
@@ -170,10 +171,12 @@ class _MessageInputState extends State<MessageInput> {
   void _showError(String message) {
     if (!mounted) return;
     
+    final theme = Theme.of(context);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppTheme.errorColor,
+        backgroundColor: theme.colorScheme.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -181,12 +184,14 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: theme.shadowColor.withOpacity(0.05),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
@@ -209,7 +214,7 @@ class _MessageInputState extends State<MessageInput> {
                   IconButton(
                     onPressed: widget.isLoading ? null : _handleAttach,
                     icon: const Icon(Icons.attach_file),
-                    color: AppTheme.primaryColor,
+                    color: theme.colorScheme.primary,
                     tooltip: 'Attach file',
                   ),
 
@@ -224,21 +229,35 @@ class _MessageInputState extends State<MessageInput> {
                       maxLines: null,
                       minLines: 1,
                       textCapitalization: TextCapitalization.sentences,
+                      style: theme.textTheme.bodyLarge,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
+                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(color: AppTheme.borderColor),
+                          borderSide: BorderSide(
+                            color: theme.dividerColor,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(color: AppTheme.borderColor),
+                          borderSide: BorderSide(
+                            color: theme.dividerColor,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
-                          borderSide: const BorderSide(
-                            color: AppTheme.primaryColor,
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.primary,
                             width: 2,
+                          ),
+                        ),
+                        disabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide(
+                            color: theme.dividerColor.withOpacity(0.5),
                           ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -246,7 +265,7 @@ class _MessageInputState extends State<MessageInput> {
                           vertical: 12,
                         ),
                         filled: true,
-                        fillColor: AppTheme.backgroundColor,
+                        fillColor: theme.scaffoldBackgroundColor,
                       ),
                       onChanged: (_) => setState(() {}),
                       onSubmitted: (_) => _handleSend(),
@@ -259,19 +278,19 @@ class _MessageInputState extends State<MessageInput> {
                   IconButton(
                     onPressed: _canSend ? _handleSend : null,
                     icon: _isSending
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.primaryColor,
+                                theme.colorScheme.primary,
                               ),
                             ),
                           )
                         : const Icon(Icons.send),
-                    color: AppTheme.primaryColor,
-                    disabledColor: AppTheme.textTertiary,
+                    color: theme.colorScheme.primary,
+                    disabledColor: theme.disabledColor,
                     tooltip: 'Send message',
                   ),
                 ],
@@ -300,6 +319,8 @@ class _MessageInputState extends State<MessageInput> {
 
   /// Build individual file preview
   Widget _buildFilePreview(XFile file, int index) {
+    final theme = Theme.of(context);
+    
     return Container(
       width: 80,
       margin: const EdgeInsets.only(right: 8),
@@ -317,10 +338,10 @@ class _MessageInputState extends State<MessageInput> {
                 return Container(
                   width: 80,
                   height: 80,
-                  color: AppTheme.backgroundColor,
-                  child: const Icon(
+                  color: theme.scaffoldBackgroundColor,
+                  child: Icon(
                     Icons.broken_image,
-                    color: AppTheme.textTertiary,
+                    color: theme.disabledColor,
                   ),
                 );
               },
@@ -335,14 +356,14 @@ class _MessageInputState extends State<MessageInput> {
               onTap: () => _removeFile(index),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Colors.black54,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.close,
                   size: 16,
-                  color: Colors.white,
+                  color: theme.colorScheme.surface,
                 ),
               ),
             ),

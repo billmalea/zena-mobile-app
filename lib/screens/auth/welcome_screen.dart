@@ -11,7 +11,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -22,9 +22,9 @@ class WelcomeScreen extends StatelessWidget {
                 // App Logo and Branding
                 _buildLogo(),
                 const SizedBox(height: 24),
-                _buildTitle(),
+                _buildTitle(context),
                 const SizedBox(height: 12),
-                _buildSubtitle(),
+                _buildSubtitle(context),
                 const SizedBox(height: 48),
 
                 // Google Sign In Button
@@ -36,7 +36,7 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: 48),
 
                 // Terms and Privacy Text
-                _buildTermsAndPrivacy(),
+                _buildTermsAndPrivacy(context),
               ],
             ),
           ),
@@ -75,25 +75,22 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   /// Build app title
-  Widget _buildTitle() {
-    return const Text(
+  Widget _buildTitle(BuildContext context) {
+    return Text(
       'Welcome to Zena',
-      style: TextStyle(
-        fontSize: 32,
+      style: Theme.of(context).textTheme.displayMedium?.copyWith(
         fontWeight: FontWeight.bold,
-        color: AppTheme.textPrimary,
       ),
       textAlign: TextAlign.center,
     );
   }
 
   /// Build subtitle
-  Widget _buildSubtitle() {
-    return const Text(
+  Widget _buildSubtitle(BuildContext context) {
+    return Text(
       'Your AI-powered rental assistant',
-      style: TextStyle(
-        fontSize: 16,
-        color: AppTheme.textSecondary,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
       ),
       textAlign: TextAlign.center,
     );
@@ -173,20 +170,22 @@ class WelcomeScreen extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
+        final theme = Theme.of(context);
+        
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.errorColor.withOpacity(0.1),
+            color: theme.colorScheme.error.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppTheme.errorColor.withOpacity(0.3),
+              color: theme.colorScheme.error.withOpacity(0.3),
             ),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.error_outline,
-                color: AppTheme.errorColor,
+                color: theme.colorScheme.error,
                 size: 24,
               ),
               const SizedBox(width: 12),
@@ -194,20 +193,18 @@ class WelcomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Authentication Failed',
-                      style: TextStyle(
-                        fontSize: 14,
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.errorColor,
+                        color: theme.colorScheme.error,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       error,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -215,7 +212,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 20),
-                color: AppTheme.errorColor,
+                color: theme.colorScheme.error,
                 onPressed: () {
                   authProvider.clearError();
                 },
@@ -228,14 +225,13 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   /// Build terms and privacy text
-  Widget _buildTermsAndPrivacy() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.0),
+  Widget _buildTermsAndPrivacy(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Text(
         'By signing in, you agree to our Terms of Service and Privacy Policy',
-        style: TextStyle(
-          fontSize: 12,
-          color: AppTheme.textTertiary,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
         ),
         textAlign: TextAlign.center,
       ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../models/message.dart';
-import '../../config/theme.dart';
 
 /// Message bubble widget for displaying chat messages
 /// Handles both user and assistant messages with appropriate styling
@@ -15,6 +14,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final theme = Theme.of(context);
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -26,8 +26,8 @@ class MessageBubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isUser
-              ? AppTheme.userMessageBg
-              : AppTheme.assistantMessageBg,
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -38,7 +38,7 @@ class MessageBubble extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: theme.shadowColor.withOpacity(0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -46,10 +46,10 @@ class MessageBubble extends StatelessWidget {
         ),
         child: Text(
           message.content,
-          style: TextStyle(
+          style: theme.textTheme.bodyMedium?.copyWith(
             color: isUser
-                ? AppTheme.userMessageText
-                : AppTheme.assistantMessageText,
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurface,
             fontSize: 15,
             height: 1.4,
           ),
