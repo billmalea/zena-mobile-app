@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../utils/debug_logger.dart';
 import 'dart:async';
 
 /// Authentication Provider for managing user authentication state
@@ -30,21 +31,21 @@ class AuthProvider with ChangeNotifier {
 
   /// Initialize provider and listen to auth state changes
   void _initialize() {
-    print('🚀 [AuthProvider] Initializing...');
+    DebugLogger.log('🚀 [AuthProvider] Initializing...');
     
     // Set initial user state
     _user = _authService.currentUser;
     _isLoading = false;
-    print('👤 [AuthProvider] Initial user: ${_user?.email ?? "None"}');
+    DebugLogger.log('👤 [AuthProvider] Initial user: ${_user?.email ?? "None"}');
     notifyListeners();
 
     // Listen to auth state changes
     _authSubscription = _authService.authStateChanges.listen(
       (AuthState authState) {
-        print('🔄 [AuthProvider] Auth state changed');
-        print('📧 [AuthProvider] User: ${authState.session?.user.email ?? "None"}');
-        print('🎟️ [AuthProvider] Session: ${authState.session != null}');
-        print('📅 [AuthProvider] Event: ${authState.event}');
+        DebugLogger.log('🔄 [AuthProvider] Auth state changed');
+        DebugLogger.log('📧 [AuthProvider] User: ${authState.session?.user.email ?? "None"}');
+        DebugLogger.log('🎟️ [AuthProvider] Session: ${authState.session != null}');
+        DebugLogger.log('📅 [AuthProvider] Event: ${authState.event}');
         
         _user = authState.session?.user;
         _isLoading = false;
@@ -52,8 +53,8 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       },
       onError: (error, stackTrace) {
-        print('❌ [AuthProvider] Auth state error: $error');
-        print('📍 [AuthProvider] Stack trace: $stackTrace');
+        DebugLogger.log('❌ [AuthProvider] Auth state error: $error');
+        DebugLogger.log('📍 [AuthProvider] Stack trace: $stackTrace');
         _error = 'Authentication error: ${error.toString()}';
         _isLoading = false;
         notifyListeners();
@@ -64,19 +65,19 @@ class AuthProvider with ChangeNotifier {
   /// Sign in with Google OAuth
   Future<void> signInWithGoogle() async {
     try {
-      print('🔐 [AuthProvider] Starting sign-in process...');
+      DebugLogger.log('🔐 [AuthProvider] Starting sign-in process...');
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      print('📞 [AuthProvider] Calling AuthService.signInWithGoogle()...');
+      DebugLogger.log('📞 [AuthProvider] Calling AuthService.signInWithGoogle()...');
       await _authService.signInWithGoogle();
-      print('✅ [AuthProvider] AuthService.signInWithGoogle() completed');
+      DebugLogger.log('✅ [AuthProvider] AuthService.signInWithGoogle() completed');
 
       // State will be updated by authStateChanges listener
     } catch (e, stackTrace) {
-      print('❌ [AuthProvider] Sign-in error: $e');
-      print('📍 [AuthProvider] Stack trace: $stackTrace');
+      DebugLogger.log('❌ [AuthProvider] Sign-in error: $e');
+      DebugLogger.log('📍 [AuthProvider] Stack trace: $stackTrace');
       _error = 'Failed to sign in: ${e.toString()}';
       _isLoading = false;
       notifyListeners();

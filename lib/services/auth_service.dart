@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../config/app_config.dart';
+import '../utils/debug_logger.dart';
 
 /// Authentication Service for handling user authentication
 /// Singleton pattern for consistent auth state across the app
@@ -36,29 +37,29 @@ class AuthService {
   /// This provides a better UX than web-based OAuth
   Future<void> signInWithGoogle() async {
     try {
-      print('🔐 [AuthService] Initializing Google Sign-In...');
-      print(
+      DebugLogger.log('🔐 [AuthService] Initializing Google Sign-In...');
+      DebugLogger.log(
           '📋 [AuthService] Server Client ID: ${AppConfig.googleWebClientId}');
-      print('📦 [AuthService] Expected Package Name: com.zena.mobile');
-      print(
+      DebugLogger.log('📦 [AuthService] Expected Package Name: com.zena.mobile');
+      DebugLogger.log(
           '⚠️ [AuthService] Make sure you created Android OAuth Client in Google Cloud Console!');
-      print('⚠️ [AuthService] Package name must be: com.zena.mobile');
-      print('⚠️ [AuthService] SHA-1 must be added to the Android client');
+      DebugLogger.log('⚠️ [AuthService] Package name must be: com.zena.mobile');
+      DebugLogger.log('⚠️ [AuthService] SHA-1 must be added to the Android client');
 
       // Trigger the Google Sign-In flow
-      print('👤 [AuthService] Launching Google Sign-In UI...');
+      DebugLogger.log('👤 [AuthService] Launching Google Sign-In UI...');
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
         // User cancelled the sign-in
-        print('⚠️ [AuthService] User cancelled Google Sign-In');
+        DebugLogger.log('⚠️ [AuthService] User cancelled Google Sign-In');
         throw AuthException('Google sign-in was cancelled');
       }
 
-      print('✅ [AuthService] Google user selected: ${googleUser.email}');
+      DebugLogger.log('✅ [AuthService] Google user selected: ${googleUser.email}');
 
       // Obtain the auth details from the request
-      print('🔑 [AuthService] Getting authentication tokens...');
+      DebugLogger.log('🔑 [AuthService] Getting authentication tokens...');
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
@@ -66,17 +67,17 @@ class AuthService {
       final String? idToken = googleAuth.idToken;
       final String? accessToken = googleAuth.accessToken;
 
-      print('🎫 [AuthService] ID Token present: ${idToken != null}');
-      print('🎫 [AuthService] Access Token present: ${accessToken != null}');
+      DebugLogger.log('🎫 [AuthService] ID Token present: ${idToken != null}');
+      DebugLogger.log('🎫 [AuthService] Access Token present: ${accessToken != null}');
 
       if (idToken == null) {
-        print('❌ [AuthService] ID token is null!');
+        DebugLogger.log('❌ [AuthService] ID token is null!');
         throw AuthException('Failed to get ID token from Google');
       }
 
       // Sign in to Supabase using the ID token
-      print('📤 [AuthService] Sending ID token to Supabase...');
-      print('🔗 [AuthService] Supabase URL: ${AppConfig.supabaseUrl}');
+      DebugLogger.log('📤 [AuthService] Sending ID token to Supabase...');
+      DebugLogger.log('🔗 [AuthService] Supabase URL: ${AppConfig.supabaseUrl}');
 
       final response = await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
@@ -84,17 +85,17 @@ class AuthService {
         accessToken: accessToken,
       );
 
-      print('✅ [AuthService] Supabase sign-in response received');
-      print('👤 [AuthService] User ID: ${response.user?.id}');
-      print('📧 [AuthService] User Email: ${response.user?.email}');
-      print('🎟️ [AuthService] Session present: ${response.session != null}');
+      DebugLogger.log('✅ [AuthService] Supabase sign-in response received');
+      DebugLogger.log('👤 [AuthService] User ID: ${response.user?.id}');
+      DebugLogger.log('📧 [AuthService] User Email: ${response.user?.email}');
+      DebugLogger.log('🎟️ [AuthService] Session present: ${response.session != null}');
     } catch (e, stackTrace) {
-      print('❌ [AuthService] Error during sign-in: $e');
-      print('📍 [AuthService] Error type: ${e.runtimeType}');
-      print('📍 [AuthService] Stack trace: $stackTrace');
+      DebugLogger.log('❌ [AuthService] Error during sign-in: $e');
+      DebugLogger.log('📍 [AuthService] Error type: ${e.runtimeType}');
+      DebugLogger.log('📍 [AuthService] Stack trace: $stackTrace');
 
       // Clean up Google sign-in state on error
-      print('🧹 [AuthService] Cleaning up Google Sign-In state...');
+      DebugLogger.log('🧹 [AuthService] Cleaning up Google Sign-In state...');
       await _googleSignIn.signOut();
 
       if (e is AuthException) {

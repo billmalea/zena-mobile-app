@@ -19,9 +19,12 @@ class AppTheme {
   static const Color cardColor = Color(0xFFFFFFFF); // White
 
   // Text Colors - Faded Black Scheme
-  static const Color textPrimary = Color(0xFF0A0A0A); // Faded black (primary text)
-  static const Color textSecondary = Color(0xFF404040); // Faded black (secondary text)
-  static const Color textTertiary = Color(0xFF737373); // Faded black (tertiary text)
+  static const Color textPrimary =
+      Color(0xFF0A0A0A); // Faded black (primary text)
+  static const Color textSecondary =
+      Color(0xFF404040); // Faded black (secondary text)
+  static const Color textTertiary =
+      Color(0xFF737373); // Faded black (tertiary text)
 
   // Message Bubble Colors
   static const Color userMessageBg = Color(0xFF10B981); // Emerald-500
@@ -212,10 +215,11 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      scaffoldBackgroundColor:const Color.fromARGB(255, 10, 10, 10) ,
       colorScheme: const ColorScheme.dark(
         primary: primaryColor,
         secondary: secondaryColor,
-        surface: Color(0xFF1F2937),
+        surface: Color.fromARGB(255, 10, 10, 10),
         error: errorColor,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),

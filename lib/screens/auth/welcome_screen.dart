@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
+import '../../utils/debug_logger.dart';
 
 /// Welcome screen for user authentication
 /// Displays app branding and Google Sign In button
@@ -243,15 +244,15 @@ class WelcomeScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
-      print('🔐 [WelcomeScreen] Starting Google Sign-In...');
+      DebugLogger.log('🔐 [WelcomeScreen] Starting Google Sign-In...');
       await authProvider.signInWithGoogle();
-      print('✅ [WelcomeScreen] Google Sign-In completed successfully');
+      DebugLogger.log('✅ [WelcomeScreen] Google Sign-In completed successfully');
       // Navigation will be handled by AuthWrapper in main.dart
     } catch (e, stackTrace) {
       // Error is already set in AuthProvider
       // UI will update automatically via Consumer
-      print('❌ [WelcomeScreen] Sign-In Error: $e');
-      print('📍 [WelcomeScreen] Stack Trace: $stackTrace');
+      DebugLogger.log('❌ [WelcomeScreen] Sign-In Error: $e');
+      DebugLogger.log('📍 [WelcomeScreen] Stack Trace: $stackTrace');
     }
   }
 }
