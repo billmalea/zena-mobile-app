@@ -112,6 +112,14 @@ class ApiService {
       return jsonDecode(response.body);
     } else if (response.statusCode == 401) {
       throw AuthException('Unauthorized - please sign in again');
+    } else if (response.statusCode == 307 || response.statusCode == 308) {
+      // Handle redirects - extract the redirect location
+      final location = response.headers['location'] ?? 'unknown';
+      throw ApiException(
+        'Request redirected (${response.statusCode}). Server wants to redirect to: $location. '
+        'Check if your API URL needs a trailing slash or different path.',
+        response.statusCode,
+      );
     } else if (response.statusCode == 400) {
       throw ApiException(
         'Bad request: ${response.body}',

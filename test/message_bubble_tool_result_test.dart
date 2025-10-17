@@ -5,7 +5,8 @@ import 'package:zena_mobile/widgets/chat/message_bubble.dart';
 
 void main() {
   group('MessageBubble Tool Result Rendering', () {
-    testWidgets('renders message content without tool results', (WidgetTester tester) async {
+    testWidgets('renders message content without tool results',
+        (WidgetTester tester) async {
       final message = Message(
         id: '1',
         role: 'assistant',
@@ -24,7 +25,8 @@ void main() {
       expect(find.text('Hello, how can I help you?'), findsOneWidget);
     });
 
-    testWidgets('renders message with single tool result', (WidgetTester tester) async {
+    testWidgets('renders message with single tool result',
+        (WidgetTester tester) async {
       final message = Message(
         id: '2',
         role: 'assistant',
@@ -55,7 +57,8 @@ void main() {
       expect(find.byType(Column), findsWidgets);
     });
 
-    testWidgets('renders message with multiple tool results', (WidgetTester tester) async {
+    testWidgets('renders message with multiple tool results',
+        (WidgetTester tester) async {
       final message = Message(
         id: '3',
         role: 'assistant',
@@ -67,7 +70,10 @@ void main() {
           ),
           ToolResult(
             toolName: 'calculateAffordability',
-            result: {'monthlyIncome': 100000, 'recommendedRange': {'min': 20000, 'max': 30000}},
+            result: {
+              'monthlyIncome': 100000,
+              'recommendedRange': {'min': 20000, 'max': 30000}
+            },
           ),
         ],
         createdAt: DateTime.now(),
@@ -88,7 +94,8 @@ void main() {
       expect(find.byType(Column), findsWidgets);
     });
 
-    testWidgets('passes onSendMessage callback to tool result widget', (WidgetTester tester) async {
+    testWidgets('passes onSendMessage callback to tool result widget',
+        (WidgetTester tester) async {
       bool callbackCalled = false;
       String? sentMessage;
 
@@ -124,7 +131,8 @@ void main() {
       // (actual callback invocation would be tested in ToolResultWidget tests)
     });
 
-    testWidgets('renders empty message with only tool results', (WidgetTester tester) async {
+    testWidgets('renders empty message with only tool results',
+        (WidgetTester tester) async {
       final message = Message(
         id: '5',
         role: 'assistant',
