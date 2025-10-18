@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 
 /// PropertySubmissionCard displays the property submission workflow progress.
 ///
@@ -124,7 +125,7 @@ class PropertySubmissionCard extends StatelessWidget {
       case 'video_uploaded':
         return [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: CardStyles.cardPadding,
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer.withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
@@ -289,17 +290,11 @@ class PropertySubmissionCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

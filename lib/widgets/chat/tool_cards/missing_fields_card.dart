@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 import 'package:flutter/services.dart';
 
 /// MissingFieldsCard prompts users to provide missing required property fields.
@@ -379,18 +380,12 @@ class _MissingFieldsCardState extends State<MissingFieldsCard> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: CardStyles.cardPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

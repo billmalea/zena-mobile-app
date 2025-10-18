@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'card_styles.dart';
 
 /// ContactInfoCard displays property owner/agent contact details after successful payment.
 ///
@@ -94,42 +95,37 @@ class ContactInfoCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Success header with checkmark
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(10),
+              decoration: CardStyles.highlightContainer(
+                context,
+                color: Colors.green,
+                opacity: 0.1,
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.check,
                       size: 24,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: CardStyles.elementSpacing),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,14 +134,14 @@ class ContactInfoCard extends StatelessWidget {
                           alreadyPaid ? 'Contact Info Retrieved' : 'Payment Successful!',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.green.shade900,
+                            color: CardStyles.getDarkerColor(Colors.green, 0.6),
                           ),
                         ),
                         if (message.isNotEmpty)
                           Text(
                             message,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.green.shade700,
+                              color: CardStyles.getDarkerColor(Colors.green, 0.7),
                             ),
                           ),
                       ],
@@ -154,15 +150,12 @@ class ContactInfoCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: CardStyles.sectionSpacing),
 
             // Property details
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: CardStyles.secondaryContainer(context),
               child: Row(
                 children: [
                   Icon(
@@ -170,7 +163,7 @@ class ContactInfoCard extends StatelessWidget {
                     size: 20,
                     color: colorScheme.primary,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: CardStyles.smallSpacing),
                   Expanded(
                     child: Text(
                       propertyTitle,
@@ -184,17 +177,11 @@ class ContactInfoCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: CardStyles.sectionSpacing),
 
             // Contact information section
-            Text(
-              'Contact Information',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
+            CardStyles.sectionHeader(context, 'Contact Information'),
+            const SizedBox(height: CardStyles.elementSpacing),
 
             // Owner/Agent name
             Row(
@@ -204,7 +191,7 @@ class ContactInfoCard extends StatelessWidget {
                   size: 20,
                   color: colorScheme.onSurface.withOpacity(0.6),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: CardStyles.smallSpacing),
                 Expanded(
                   child: Text(
                     ownerName,
@@ -215,20 +202,13 @@ class ContactInfoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: CardStyles.elementSpacing),
 
             // Phone number with action buttons
             if (phoneNumber.isNotEmpty) ...[
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: colorScheme.primary.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
+                decoration: CardStyles.primaryContainer(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -239,7 +219,7 @@ class ContactInfoCard extends StatelessWidget {
                           size: 18,
                           color: colorScheme.primary,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: CardStyles.smallSpacing),
                         Expanded(
                           child: Text(
                             phoneNumber,
@@ -251,7 +231,7 @@ class ContactInfoCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: CardStyles.elementSpacing),
                     Row(
                       children: [
                         Expanded(
@@ -259,32 +239,16 @@ class ContactInfoCard extends StatelessWidget {
                             onPressed: () => _makePhoneCall(phoneNumber),
                             icon: const Icon(Icons.phone, size: 18),
                             label: const Text('Call'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                            style: CardStyles.primaryButton(context),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: CardStyles.smallSpacing),
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () => _openWhatsApp(phoneNumber),
                             icon: const Icon(Icons.chat, size: 18),
                             label: const Text('WhatsApp'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: const Color(0xFF25D366), // WhatsApp green
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
+                            style: CardStyles.successButton(context),
                           ),
                         ),
                       ],
@@ -292,7 +256,7 @@ class ContactInfoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: CardStyles.elementSpacing),
             ],
 
             // Email if available
@@ -304,7 +268,7 @@ class ContactInfoCard extends StatelessWidget {
                     size: 20,
                     color: colorScheme.onSurface.withOpacity(0.6),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: CardStyles.smallSpacing),
                   Expanded(
                     child: Text(
                       email,
@@ -313,26 +277,17 @@ class ContactInfoCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: CardStyles.elementSpacing),
             ],
 
             // Payment receipt information
             if (paymentInfo != null && !alreadyPaid) ...[
-              const Divider(height: 24),
-              Text(
-                'Payment Receipt',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 12),
+              CardStyles.divider(),
+              CardStyles.sectionHeader(context, 'Payment Receipt'),
+              const SizedBox(height: CardStyles.elementSpacing),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: CardStyles.secondaryContainer(context),
                 child: Column(
                   children: [
                     if (paymentAmount != null)
@@ -355,7 +310,7 @@ class ContactInfoCard extends StatelessWidget {
                         ],
                       ),
                     if (receiptNumber != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: CardStyles.smallSpacing),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -381,24 +336,14 @@ class ContactInfoCard extends StatelessWidget {
 
             // Video link button if available
             if (videoLink != null && videoLink.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: CardStyles.sectionSpacing),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => _openVideoLink(videoLink),
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('Watch Property Video'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    foregroundColor: colorScheme.primary,
-                    side: BorderSide(
-                      color: colorScheme.primary,
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: CardStyles.secondaryButton(context),
                 ),
               ),
             ],

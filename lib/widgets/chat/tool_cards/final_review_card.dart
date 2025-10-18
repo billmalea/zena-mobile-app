@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 import 'package:intl/intl.dart';
 
 /// FinalReviewCard displays complete property summary before listing.
@@ -207,18 +208,12 @@ class _FinalReviewCardState extends State<FinalReviewCard> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: CardStyles.cardPadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -265,7 +260,7 @@ class _FinalReviewCardState extends State<FinalReviewCard> {
 
               // Generated Title Section
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: CardStyles.cardPadding,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -317,7 +312,7 @@ class _FinalReviewCardState extends State<FinalReviewCard> {
 
               // Generated Description Section
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: CardStyles.cardPadding,
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(10),

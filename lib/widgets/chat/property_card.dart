@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/property.dart';
+import 'tool_cards/card_styles.dart';
 
 /// PropertyCard widget displays property information in a card format
 /// Used to show property search results in chat messages
@@ -35,11 +36,9 @@ class _PropertyCardState extends State<PropertyCard> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -58,7 +57,7 @@ class _PropertyCardState extends State<PropertyCard> {
 
           // Property Details
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: CardStyles.cardPadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -71,7 +70,7 @@ class _PropertyCardState extends State<PropertyCard> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: CardStyles.smallSpacing),
 
                 // Location
                 Row(
@@ -81,7 +80,7 @@ class _PropertyCardState extends State<PropertyCard> {
                       size: 16,
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: CardStyles.tinySpacing),
                     Expanded(
                       child: Text(
                         property.location,
@@ -94,7 +93,7 @@ class _PropertyCardState extends State<PropertyCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: CardStyles.elementSpacing),
 
                 // Rent Amount
                 Text(
@@ -104,14 +103,14 @@ class _PropertyCardState extends State<PropertyCard> {
                         fontWeight: FontWeight.bold,
                       ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: CardStyles.tinySpacing),
                 Text(
                   'per month',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: CardStyles.elementSpacing),
 
                 // Property Details Row (Bedrooms, Bathrooms, Type)
                 Row(
@@ -138,11 +137,11 @@ class _PropertyCardState extends State<PropertyCard> {
 
                 // Amenities
                 if (property.amenities.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: CardStyles.sectionSpacing),
                   _buildAmenities(context, property.amenities),
                 ],
 
-                const SizedBox(height: 16),
+                const SizedBox(height: CardStyles.sectionSpacing),
 
                 // Request Contact Button
                 SizedBox(
@@ -151,9 +150,7 @@ class _PropertyCardState extends State<PropertyCard> {
                     onPressed: () => _handleRequestContact(property),
                     icon: const Icon(Icons.phone),
                     label: const Text('Request Contact Info'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+                    style: CardStyles.primaryButton(context),
                   ),
                 ),
               ],
@@ -167,7 +164,10 @@ class _PropertyCardState extends State<PropertyCard> {
   /// Build image carousel with PageView
   Widget _buildImageCarousel(Property property) {
     if (!property.hasImages) {
-      return _buildImagePlaceholder(Icons.home, 'No image available');
+      return CardStyles.imageErrorPlaceholder(
+        context,
+        message: 'No image available',
+      );
     }
 
     return SizedBox(
@@ -188,14 +188,14 @@ class _PropertyCardState extends State<PropertyCard> {
               return CachedNetworkImage(
                 imageUrl: property.images[index],
                 fit: BoxFit.cover,
-                placeholder: (context, url) => _buildImagePlaceholder(
-                  Icons.image,
-                  'Loading...',
-                  showProgress: true,
+                placeholder: (context, url) => CardStyles.imageLoadingPlaceholder(
+                  context,
+                  icon: Icons.image,
+                  message: 'Loading...',
                 ),
-                errorWidget: (context, url, error) => _buildImagePlaceholder(
-                  Icons.broken_image,
-                  'Failed to load image',
+                errorWidget: (context, url, error) => CardStyles.imageErrorPlaceholder(
+                  context,
+                  message: 'Failed to load image',
                 ),
               );
             },
@@ -249,108 +249,31 @@ class _PropertyCardState extends State<PropertyCard> {
     
     String badgeText = 'Available';
     Color badgeColor = Colors.green;
+    IconData? icon;
     
     if (!isAvailable || status == 'rented' || status == 'unavailable') {
       badgeText = 'Unavailable';
       badgeColor = Colors.red;
+      icon = Icons.close;
     } else if (status == 'pending') {
       badgeText = 'Pending';
       badgeColor = Colors.orange;
+      icon = Icons.schedule;
+    } else {
+      icon = Icons.check;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: badgeColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Text(
-        badgeText,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  /// Build image placeholder for loading and error states
-  Widget _buildImagePlaceholder(
-    IconData icon,
-    String message, {
-    bool showProgress = false,
-  }) {
-    return Builder(
-      builder: (context) {
-        final theme = Theme.of(context);
-        
-        return Container(
-          height: 200,
-          width: double.infinity,
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 48,
-                color: theme.disabledColor,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
-                ),
-              ),
-              if (showProgress) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(theme.disabledColor),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
+    return CardStyles.statusBadge(
+      context,
+      badgeText,
+      color: badgeColor,
+      icon: icon,
     );
   }
 
   /// Build detail icon with label for property attributes
   Widget _buildDetailIcon(BuildContext context, IconData icon, String label) {
-    final theme = Theme.of(context);
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: theme.colorScheme.onSurface.withOpacity(0.7),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-                fontWeight: FontWeight.w500,
-              ),
-        ),
-      ],
-    );
+    return CardStyles.iconText(context, icon, label);
   }
 
   /// Build amenities chips
@@ -382,8 +305,7 @@ class _PropertyCardState extends State<PropertyCard> {
         
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
+          decoration: CardStyles.secondaryContainer(context).copyWith(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: theme.colorScheme.outline.withOpacity(0.2),

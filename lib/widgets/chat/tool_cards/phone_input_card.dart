@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 
 /// PhoneInputCard provides a form for users to input their phone number
 /// when it's not available in their profile or they want to use a different number.
@@ -124,17 +125,11 @@ class _PhoneInputCardState extends State<PhoneInputCard> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -169,10 +164,7 @@ class _PhoneInputCardState extends State<PhoneInputCard> {
             // Property context
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: CardStyles.secondaryContainer(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -303,8 +295,7 @@ class _PhoneInputCardState extends State<PhoneInputCard> {
             // Format hints
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
+              decoration: CardStyles.secondaryContainer(context).copyWith(
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
@@ -335,18 +326,19 @@ class _PhoneInputCardState extends State<PhoneInputCard> {
                 onPressed: _isValid ? _onSubmit : null,
                 icon: const Icon(Icons.send),
                 label: const Text('Submit Phone Number'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  disabledBackgroundColor:
-                      colorScheme.onSurface.withOpacity(0.12),
-                  disabledForegroundColor:
-                      colorScheme.onSurface.withOpacity(0.38),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                style: CardStyles.primaryButton(context).copyWith(
+                  backgroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.disabled)) {
+                      return colorScheme.onSurface.withOpacity(0.12);
+                    }
+                    return colorScheme.primary;
+                  }),
+                  foregroundColor: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.disabled)) {
+                      return colorScheme.onSurface.withOpacity(0.38);
+                    }
+                    return colorScheme.onPrimary;
+                  }),
                 ),
               ),
             ),

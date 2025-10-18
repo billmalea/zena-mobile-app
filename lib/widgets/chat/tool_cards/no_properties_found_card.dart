@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 
 /// NoPropertiesFoundCard widget displays a helpful message when no properties match the search
 /// Provides suggestions and action buttons to help users adjust their search
@@ -18,13 +19,11 @@ class NoPropertiesFoundCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -81,9 +80,7 @@ class NoPropertiesFoundCard extends StatelessWidget {
             // Suggestions
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+              decoration: CardStyles.secondaryContainer(context).copyWith(
                 border: Border.all(
                   color: theme.colorScheme.outline.withOpacity(0.2),
                 ),

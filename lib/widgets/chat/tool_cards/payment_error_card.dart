@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 
 /// PaymentErrorCard displays payment errors with appropriate styling and retry options.
 ///
@@ -77,15 +78,7 @@ class PaymentErrorCard extends StatelessWidget {
     }
   }
 
-  /// Get darker shade of color for text
-  Color _getDarkerColor(Color color, double factor) {
-    return Color.fromRGBO(
-      (color.red * factor).round(),
-      (color.green * factor).round(),
-      (color.blue * factor).round(),
-      1,
-    );
-  }
+
 
   /// Get user-friendly error message
   String _getUserFriendlyMessage() {
@@ -122,26 +115,21 @@ class PaymentErrorCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: errorColor.withOpacity(0.3),
-          width: 1.5,
-        ),
-      ),
+      shape: CardStyles.cardShape(context, borderColor: errorColor.withOpacity(0.3)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Error header with icon
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: errorColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+              decoration: CardStyles.highlightContainer(
+                context,
+                color: errorColor,
+                opacity: 0.1,
               ),
               child: Row(
                 children: [
@@ -166,14 +154,14 @@ class PaymentErrorCard extends StatelessWidget {
                           _getErrorTitle(),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: _getDarkerColor(errorColor, 0.8),
+                            color: CardStyles.getDarkerColor(errorColor, 0.8),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: CardStyles.tinySpacing),
                         Text(
                           _getUserFriendlyMessage(),
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: _getDarkerColor(errorColor, 0.6),
+                            color: CardStyles.getDarkerColor(errorColor, 0.6),
                           ),
                         ),
                       ],
@@ -182,15 +170,12 @@ class PaymentErrorCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: CardStyles.sectionSpacing),
 
             // Property details
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: CardStyles.secondaryContainer(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -244,13 +229,10 @@ class PaymentErrorCard extends StatelessWidget {
 
             // Payment info if available
             if (paymentInfo != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: CardStyles.elementSpacing),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                decoration: CardStyles.secondaryContainer(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -278,7 +260,7 @@ class PaymentErrorCard extends StatelessWidget {
                         ],
                       ),
                     if (paymentInfo!['transactionId'] != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: CardStyles.tinySpacing),
                       Row(
                         children: [
                           Icon(
@@ -310,7 +292,7 @@ class PaymentErrorCard extends StatelessWidget {
               ),
             ],
 
-            const SizedBox(height: 20),
+            const SizedBox(height: CardStyles.sectionSpacing),
 
             // Try Again button
             SizedBox(
@@ -319,31 +301,16 @@ class PaymentErrorCard extends StatelessWidget {
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                style: CardStyles.primaryButton(context),
               ),
             ),
 
             // Help text for specific error types
             if (errorType == 'PAYMENT_TIMEOUT' || errorType == 'PAYMENT_FAILED') ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: CardStyles.elementSpacing),
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.blue.shade200,
-                    width: 1,
-                  ),
-                ),
+                decoration: CardStyles.infoContainer(context),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -352,7 +319,7 @@ class PaymentErrorCard extends StatelessWidget {
                       size: 18,
                       color: Colors.blue.shade700,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: CardStyles.smallSpacing),
                     Expanded(
                       child: Text(
                         errorType == 'PAYMENT_TIMEOUT'

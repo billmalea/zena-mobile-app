@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 
 /// PhoneConfirmationCard displays a confirmation dialog for the user's phone number
 /// before proceeding with the payment flow for requesting contact information.
@@ -42,17 +43,11 @@ class PhoneConfirmationCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -87,10 +82,7 @@ class PhoneConfirmationCard extends StatelessWidget {
             // Property context
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: CardStyles.secondaryContainer(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -157,14 +149,7 @@ class PhoneConfirmationCard extends StatelessWidget {
             // Phone number display
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: colorScheme.primary.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
+              decoration: CardStyles.primaryContainer(context),
               child: Row(
                 children: [
                   Icon(
@@ -194,34 +179,16 @@ class PhoneConfirmationCard extends StatelessWidget {
                   onPressed: onConfirm,
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Yes, use this number'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: CardStyles.primaryButton(context),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: CardStyles.smallSpacing),
 
                 // Secondary button - Use different number
                 OutlinedButton.icon(
                   onPressed: onDecline,
                   icon: const Icon(Icons.edit_outlined),
                   label: const Text('No, use different number'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    foregroundColor: colorScheme.primary,
-                    side: BorderSide(
-                      color: colorScheme.primary,
-                      width: 1.5,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: CardStyles.secondaryButton(context),
                 ),
               ],
             ),

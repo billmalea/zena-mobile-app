@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_styles.dart';
 
 /// AuthPromptCard displays a prompt for users to sign in or sign up.
 ///
@@ -32,17 +33,11 @@ class AuthPromptCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colorScheme.outline.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      shape: CardStyles.cardShape(context),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: CardStyles.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -77,10 +72,7 @@ class AuthPromptCard extends StatelessWidget {
             // Message explaining why auth is needed
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: CardStyles.secondaryContainer(context),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -148,31 +140,18 @@ class AuthPromptCard extends StatelessWidget {
                   onPressed: onSignIn,
                   icon: const Icon(Icons.login),
                   label: const Text('Sign In'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: CardStyles.primaryButton(context),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: CardStyles.smallSpacing),
 
                 // Secondary button - Sign Up
                 ElevatedButton.icon(
                   onPressed: onSignUp,
                   icon: const Icon(Icons.person_add),
                   label: const Text('Create Account'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: colorScheme.secondary,
-                    foregroundColor: colorScheme.onSecondary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  style: CardStyles.primaryButton(context).copyWith(
+                    backgroundColor: WidgetStateProperty.all(colorScheme.secondary),
+                    foregroundColor: WidgetStateProperty.all(colorScheme.onSecondary),
                   ),
                 ),
 

@@ -73,6 +73,15 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Zena needs access to your microphone to record audio with property videos</string>
 	
+	<!-- URL Launcher: Allow opening phone dialer and WhatsApp -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>whatsapp</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
+	
 	<!-- Minimum iOS version -->
 	<key>MinimumOSVersion</key>
 	<string>12.0</string>
