@@ -5,6 +5,11 @@ import 'tool_cards/phone_confirmation_card.dart';
 import 'tool_cards/contact_info_card.dart';
 import 'tool_cards/payment_error_card.dart';
 import 'tool_cards/property_submission_card.dart';
+import 'tool_cards/property_hunting_card.dart';
+import 'tool_cards/commission_card.dart';
+import 'tool_cards/neighborhood_info_card.dart';
+import 'tool_cards/affordability_card.dart';
+import 'tool_cards/auth_prompt_card.dart';
 
 /// Central factory widget for routing tool results to appropriate specialized cards
 ///
@@ -239,34 +244,104 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build property hunting result
   Widget _buildPropertyHuntingResult(BuildContext context) {
-    // TODO: Implement PropertyHuntingCard in Task 13
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.search,
-      title: 'Property Hunting',
-      message: 'Your property hunting request has been received.',
+    final requestId = toolResult.result['requestId'] as String? ?? 
+                      toolResult.result['id'] as String? ?? 
+                      'unknown';
+    final status = toolResult.result['status'] as String? ?? 'pending';
+    final searchCriteria = toolResult.result['searchCriteria'] as Map<String, dynamic>? ?? 
+                           toolResult.result['criteria'] as Map<String, dynamic>? ?? 
+                           {};
+
+    return PropertyHuntingCard(
+      requestId: requestId,
+      status: status,
+      searchCriteria: searchCriteria,
+      onCheckStatus: onSendMessage,
     );
   }
 
   /// Build neighborhood info result
   Widget _buildNeighborhoodInfoResult(BuildContext context) {
-    // TODO: Implement NeighborhoodInfoCard in Task 13
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.location_city,
-      title: 'Neighborhood Information',
-      message: 'Information about this neighborhood.',
+    final name = toolResult.result['name'] as String? ?? 
+                 toolResult.result['neighborhood'] as String? ?? 
+                 'Unknown Area';
+    final description = toolResult.result['description'] as String? ?? '';
+    final keyFeatures = (toolResult.result['keyFeatures'] as List?)
+                            ?.map((e) => e.toString())
+                            .toList() ?? 
+                        (toolResult.result['features'] as List?)
+                            ?.map((e) => e.toString())
+                            .toList() ?? 
+                        [];
+    final safetyRating = (toolResult.result['safetyRating'] as num?)?.toDouble();
+    final averageRent = toolResult.result['averageRent'] as Map<String, dynamic>?;
+    
+    // Convert averageRent to Map<String, double> if present
+    Map<String, double>? rentMap;
+    if (averageRent != null) {
+      rentMap = {};
+      averageRent.forEach((key, value) {
+        if (value is num) {
+          rentMap![key] = value.toDouble();
+        }
+      });
+    }
+
+    return NeighborhoodInfoCard(
+      name: name,
+      description: description,
+      keyFeatures: keyFeatures,
+      safetyRating: safetyRating,
+      averageRent: rentMap,
     );
   }
 
   /// Build affordability result
   Widget _buildAffordabilityResult(BuildContext context) {
-    // TODO: Implement AffordabilityCard in Task 13
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.calculate,
-      title: 'Affordability Calculator',
-      message: 'Your affordability calculation results.',
+    final monthlyIncome = (toolResult.result['monthlyIncome'] as num?)?.toDouble() ?? 
+                          (toolResult.result['income'] as num?)?.toDouble() ?? 
+                          0.0;
+    
+    // Extract recommended range
+    final recommendedRangeData = toolResult.result['recommendedRange'] as Map<String, dynamic>? ?? 
+                                  toolResult.result['range'] as Map<String, dynamic>? ?? 
+                                  {};
+    final recommendedRange = <String, double>{};
+    recommendedRangeData.forEach((key, value) {
+      if (value is num) {
+        recommendedRange[key] = value.toDouble();
+      }
+    });
+    
+    final affordabilityPercentage = (toolResult.result['affordabilityPercentage'] as num?)?.toDouble() ?? 
+                                    (toolResult.result['percentage'] as num?)?.toDouble() ?? 
+                                    30.0;
+    
+    // Extract budget breakdown
+    final budgetBreakdownData = toolResult.result['budgetBreakdown'] as Map<String, dynamic>? ?? 
+                                 toolResult.result['breakdown'] as Map<String, dynamic>? ?? 
+                                 {};
+    final budgetBreakdown = <String, double>{};
+    budgetBreakdownData.forEach((key, value) {
+      if (value is num) {
+        budgetBreakdown[key] = value.toDouble();
+      }
+    });
+    
+    final tips = (toolResult.result['tips'] as List?)
+                     ?.map((e) => e.toString())
+                     .toList() ?? 
+                 (toolResult.result['recommendations'] as List?)
+                     ?.map((e) => e.toString())
+                     .toList() ?? 
+                 [];
+
+    return AffordabilityCard(
+      monthlyIncome: monthlyIncome,
+      recommendedRange: recommendedRange,
+      affordabilityPercentage: affordabilityPercentage,
+      budgetBreakdown: budgetBreakdown,
+      tips: tips,
     );
   }
 
@@ -283,12 +358,39 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build commission result
   Widget _buildCommissionResult(BuildContext context) {
-    // TODO: Implement CommissionCard in Task 13
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.monetization_on,
-      title: 'Commission Information',
-      message: 'Your commission details.',
+    final amount = (toolResult.result['amount'] as num?)?.toDouble() ?? 
+                   (toolResult.result['commission'] as num?)?.toDouble() ?? 
+                   0.0;
+    final propertyReference = toolResult.result['propertyReference'] as String? ?? 
+                              toolResult.result['property'] as String? ?? 
+                              toolResult.result['propertyTitle'] as String? ?? 
+                              'Unknown Property';
+    
+    // Parse date earned
+    DateTime dateEarned;
+    final dateStr = toolResult.result['dateEarned'] as String? ?? 
+                    toolResult.result['date'] as String?;
+    if (dateStr != null) {
+      try {
+        dateEarned = DateTime.parse(dateStr);
+      } catch (e) {
+        dateEarned = DateTime.now();
+      }
+    } else {
+      dateEarned = DateTime.now();
+    }
+    
+    final status = toolResult.result['status'] as String? ?? 'pending';
+    final totalEarnings = (toolResult.result['totalEarnings'] as num?)?.toDouble() ?? 
+                          (toolResult.result['total'] as num?)?.toDouble() ?? 
+                          amount;
+
+    return CommissionCard(
+      amount: amount,
+      propertyReference: propertyReference,
+      dateEarned: dateEarned,
+      status: status,
+      totalEarnings: totalEarnings,
     );
   }
 
@@ -305,12 +407,30 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build auth prompt result
   Widget _buildAuthPromptResult(BuildContext context) {
-    // TODO: Implement AuthPromptCard in Task 13
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.login,
-      title: 'Sign In Required',
-      message: 'Please sign in to continue.',
+    final message = toolResult.result['message'] as String? ?? 
+                    toolResult.result['reason'] as String? ?? 
+                    'Please sign in or create an account to continue.';
+    final allowGuest = toolResult.result['allowGuest'] as bool? ?? false;
+
+    return AuthPromptCard(
+      message: message,
+      onSignIn: () {
+        if (onSendMessage != null) {
+          onSendMessage!('Sign in');
+        }
+      },
+      onSignUp: () {
+        if (onSendMessage != null) {
+          onSendMessage!('Create account');
+        }
+      },
+      onContinueAsGuest: allowGuest
+          ? () {
+              if (onSendMessage != null) {
+                onSendMessage!('Continue as guest');
+              }
+            }
+          : null,
     );
   }
 
