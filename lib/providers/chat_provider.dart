@@ -2,11 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/message.dart';
 import '../models/submission_state.dart';
 import '../services/chat_service.dart';
 import '../services/file_upload_service.dart';
 import '../services/submission_state_manager.dart';
+import '../services/message_persistence_service.dart';
+import '../services/offline_message_queue.dart';
+import '../services/message_sync_service.dart';
 
 /// Chat Provider for managing chat state and messages
 /// Uses ChangeNotifier to notify UI of chat changes
@@ -14,6 +18,11 @@ class ChatProvider with ChangeNotifier {
   final ChatService _chatService = ChatService();
   final FileUploadService _fileUploadService = FileUploadService();
   final SubmissionStateManager _stateManager;
+  final Connectivity _connectivity = Connectivity();
+  MessagePersistenceService? _persistenceService;
+  OfflineMessageQueue? _offlineQueue;
+  MessageSyncService? _syncService;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   final _uuid = const Uuid();
 
   List<Message> _messages = [];
@@ -25,6 +34,7 @@ class ChatProvider with ChangeNotifier {
   StreamSubscription<ChatEvent>? _streamSubscription;
   String? _currentSubmissionId;
   List<String> _corruptedSubmissions = [];
+  bool _isOnline = true;
 
   ChatProvider(this._stateManager) {
     _initializeProvider();
@@ -32,17 +42,42 @@ class ChatProvider with ChangeNotifier {
 
   /// Initialize provider and load active submission states
   Future<void> _initializeProvider() async {
+    // Initialize message persistence service
+    try {
+      _persistenceService = await MessagePersistenceService.create();
+      print('✅ [ChatProvider] Message persistence service initialized');
+
+      // Initialize offline queue
+      _offlineQueue = OfflineMessageQueue(_persistenceService!, _chatService);
+      print('✅ [ChatProvider] Offline message queue initialized');
+
+      // Initialize sync service
+      _syncService = MessageSyncService(_persistenceService!, _chatService);
+      print('✅ [ChatProvider] Message sync service initialized');
+
+      // Start background sync
+      _syncService!.startBackgroundSync();
+      print('✅ [ChatProvider] Background sync started');
+
+      // Initialize connectivity monitoring
+      await _initializeConnectivity();
+      print('✅ [ChatProvider] Connectivity monitoring initialized');
+    } catch (e) {
+      print('❌ [ChatProvider] Failed to initialize persistence service: $e');
+    }
+
     // Process any queued updates first
     await _stateManager.processQueuedUpdates();
-    
+
     // Check for corrupted submissions
     final corrupted = _stateManager.detectCorruptedStates();
     if (corrupted.isNotEmpty) {
-      print('⚠️ [ChatProvider] Found ${corrupted.length} corrupted submissions');
+      print(
+          '⚠️ [ChatProvider] Found ${corrupted.length} corrupted submissions');
       // Store for later handling in UI
       _corruptedSubmissions = corrupted;
     }
-    
+
     await _loadActiveSubmissions();
   }
 
@@ -51,12 +86,13 @@ class ChatProvider with ChangeNotifier {
   Future<void> _loadActiveSubmissions() async {
     try {
       final activeStates = _stateManager.getAllActiveStates();
-      
+
       if (activeStates.isNotEmpty) {
         // Get the most recent submission
         final mostRecent = activeStates.first;
         _currentSubmissionId = mostRecent.submissionId;
-        print('🔄 [ChatProvider] Restored submission: $_currentSubmissionId at stage ${mostRecent.stage}');
+        print(
+            '🔄 [ChatProvider] Restored submission: $_currentSubmissionId at stage ${mostRecent.stage}');
         notifyListeners();
       }
     } catch (e) {
@@ -94,30 +130,79 @@ class ChatProvider with ChangeNotifier {
   bool get hasRecoveredSubmission => _currentSubmissionId != null;
 
   /// Get list of corrupted submission IDs
-  List<String> get corruptedSubmissions => List.unmodifiable(_corruptedSubmissions);
+  List<String> get corruptedSubmissions =>
+      List.unmodifiable(_corruptedSubmissions);
 
   /// Check if there are corrupted submissions
   bool get hasCorruptedSubmissions => _corruptedSubmissions.isNotEmpty;
 
+  /// Check if device is online
+  bool get isOnline => _isOnline;
+
+  /// Check if there are queued messages waiting to be sent
+  bool get hasQueuedMessages => _offlineQueue?.hasQueuedMessages ?? false;
+
+  /// Get number of queued messages
+  int get queuedMessageCount => _offlineQueue?.queueSize ?? 0;
+
   /// Load a conversation by ID
+  /// Loads from local storage first for instant display, then syncs with backend
   Future<void> loadConversation(String conversationId) async {
     try {
-      print('🔍 [ChatProvider.loadConversation] Loading conversation: $conversationId');
+      print(
+          '🔍 [ChatProvider.loadConversation] Loading conversation: $conversationId');
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      // Load from local storage first for instant display
+      if (_persistenceService != null) {
+        try {
+          final localMessages =
+              await _persistenceService!.loadMessages(conversationId);
+          if (localMessages.isNotEmpty) {
+            print(
+                '📦 [ChatProvider.loadConversation] Loaded ${localMessages.length} messages from local storage');
+            _conversationId = conversationId;
+            _messages = localMessages;
+            notifyListeners();
+          }
+        } catch (e) {
+          print(
+              '⚠️ [ChatProvider.loadConversation] Failed to load from local storage: $e');
+        }
+      }
+
+      // Then sync with backend
       final conversation = await _chatService.getConversation(conversationId);
-      print('✅ [ChatProvider.loadConversation] Conversation loaded');
-      print('🆔 [ChatProvider.loadConversation] Conversation ID: ${conversation.id}');
-      print('💬 [ChatProvider.loadConversation] Message count: ${conversation.messages.length}');
-      
+      print(
+          '✅ [ChatProvider.loadConversation] Conversation loaded from backend');
+      print(
+          '🆔 [ChatProvider.loadConversation] Conversation ID: ${conversation.id}');
+      print(
+          '💬 [ChatProvider.loadConversation] Message count: ${conversation.messages.length}');
+
       _conversationId = conversation.id;
       _messages = List.from(conversation.messages);
 
+      // Save backend messages to local storage
+      if (_persistenceService != null) {
+        try {
+          for (final message in _messages) {
+            await _persistenceService!.saveMessage(message, conversationId);
+          }
+          print(
+              '💾 [ChatProvider.loadConversation] Saved ${_messages.length} messages to local storage');
+        } catch (e) {
+          print(
+              '⚠️ [ChatProvider.loadConversation] Failed to save to local storage: $e');
+        }
+      }
+
       _isLoading = false;
       notifyListeners();
-      print('✅ [ChatProvider.loadConversation] State updated and listeners notified');
+      print(
+          '✅ [ChatProvider.loadConversation] State updated and listeners notified');
     } catch (e) {
       print('❌ [ChatProvider.loadConversation] Error: $e');
       _error = 'Failed to load conversation: ${e.toString()}';
@@ -150,6 +235,7 @@ class ChatProvider with ChangeNotifier {
 
   /// Send a message with streaming support
   /// Uploads files to Supabase Storage and appends URLs to message text
+  /// Handles offline scenarios by queuing messages
   Future<void> sendMessage(String text, [List<File>? files]) async {
     print('🎬 [ChatProvider] sendMessage called');
     print('💬 [ChatProvider] Text: $text');
@@ -234,7 +320,37 @@ class ChatProvider with ChangeNotifier {
       _messages.add(userMessage);
       _error = null;
       print('✅ [ChatProvider] User message added: ${userMessage.id}');
+
+      // Save user message to local storage immediately
+      if (_persistenceService != null && _conversationId != null) {
+        try {
+          await _persistenceService!.saveMessage(userMessage, _conversationId!);
+          print('💾 [ChatProvider] User message saved to local storage');
+        } catch (e) {
+          print(
+              '⚠️ [ChatProvider] Failed to save user message to local storage: $e');
+        }
+      }
+
       notifyListeners();
+
+      // Check if online before attempting to send
+      await _checkConnectivity();
+
+      if (!_isOnline) {
+        print('📴 [ChatProvider] Device is offline, queuing message');
+
+        // Enqueue message for later sending
+        if (_offlineQueue != null && _conversationId != null) {
+          await _offlineQueue!.enqueue(userMessage, _conversationId!);
+          print('✅ [ChatProvider] Message queued for offline sending');
+        }
+
+        // Don't set error - we have the dot indicator now
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
 
       // Set loading state
       _isLoading = true;
@@ -275,17 +391,36 @@ class ChatProvider with ChangeNotifier {
           print('❌ [ChatProvider] Stream error: $error');
           _error = 'Stream error: ${error.toString()}';
           _isLoading = false;
-          
+
           // Preserve submission state on error
           if (_currentSubmissionId != null) {
             handleSubmissionError(error.toString());
           }
-          
+
           notifyListeners();
         },
         onDone: () {
           print('🏁 [ChatProvider] Stream done');
           _isLoading = false;
+
+          // Save assistant message after streaming completes
+          if (_persistenceService != null && _conversationId != null) {
+            final messageIndex =
+                _messages.indexWhere((m) => m.id == assistantMessageId);
+            if (messageIndex != -1) {
+              final message = _messages[messageIndex];
+              _persistenceService!
+                  .saveMessage(message, _conversationId!)
+                  .then((_) {
+                print(
+                    '💾 [ChatProvider] Assistant message saved to local storage after streaming complete');
+              }).catchError((e) {
+                print(
+                    '⚠️ [ChatProvider] Failed to save assistant message to local storage: $e');
+              });
+            }
+          }
+
           notifyListeners();
         },
         cancelOnError: false,
@@ -295,17 +430,151 @@ class ChatProvider with ChangeNotifier {
     } catch (e) {
       print('❌ [ChatProvider] Exception caught: $e');
       print('❌ [ChatProvider] Stack trace: ${StackTrace.current}');
-      _error = 'Failed to send message: ${e.toString()}';
+
+      // Check if error is due to network connectivity
+      final isNetworkError = _isNetworkError(e);
+
+      if (isNetworkError) {
+        print('📴 [ChatProvider] Network error detected, marking as offline');
+        _isOnline = false;
+
+        // Get the last user message
+        final lastMessage = _messages.lastWhere(
+          (m) => m.role == 'user',
+          orElse: () => _messages.last,
+        );
+
+        // Enqueue message for later sending
+        if (_offlineQueue != null && _conversationId != null) {
+          await _offlineQueue!.enqueue(lastMessage, _conversationId!);
+          print('✅ [ChatProvider] Message queued after network error');
+        }
+
+        // Don't set error - we have the dot indicator now
+      } else {
+        _error = 'Failed to send message: ${e.toString()}';
+      }
+
       _isLoading = false;
       _isUploadingFiles = false;
-      
+
       // Preserve submission state on error
       if (_currentSubmissionId != null) {
         await handleSubmissionError(e.toString());
       }
-      
+
       notifyListeners();
-      rethrow;
+
+      if (!isNetworkError) {
+        rethrow;
+      }
+    }
+  }
+
+  /// Initialize connectivity monitoring with connectivity_plus
+  Future<void> _initializeConnectivity() async {
+    // Check initial connectivity status
+    await _checkConnectivity();
+
+    // Listen to connectivity changes
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+      (List<ConnectivityResult> results) async {
+        print('🔄 [ChatProvider] Connectivity changed: $results');
+        await _handleConnectivityChange(results);
+      },
+    );
+  }
+
+  /// Handle connectivity changes
+  Future<void> _handleConnectivityChange(
+      List<ConnectivityResult> results) async {
+    final wasOnline = _isOnline;
+
+    // Check if we have any connectivity
+    _isOnline = results.isNotEmpty &&
+        !results.every((result) => result == ConnectivityResult.none);
+
+    print(
+        '📡 [ChatProvider] Connectivity status: ${_isOnline ? "ONLINE" : "OFFLINE"}');
+
+    // If we just came back online, process queued messages
+    if (_isOnline && !wasOnline) {
+      print('✅ [ChatProvider] Connection restored, processing queued messages');
+      await _processOfflineQueue();
+    } else if (!_isOnline && wasOnline) {
+      print('📴 [ChatProvider] Connection lost');
+      // Don't set error - we have the dot indicator now
+    }
+
+    notifyListeners();
+  }
+
+  /// Check network connectivity using connectivity_plus
+  Future<void> _checkConnectivity() async {
+    try {
+      final results = await _connectivity.checkConnectivity();
+      _isOnline = results.isNotEmpty &&
+          !results.every((result) => result == ConnectivityResult.none);
+
+      print(
+          '📡 [ChatProvider] Connectivity check: ${_isOnline ? "ONLINE" : "OFFLINE"}');
+
+      // Process any queued messages if we're online
+      if (_isOnline &&
+          _offlineQueue != null &&
+          _offlineQueue!.hasQueuedMessages) {
+        print(
+            '🔄 [ChatProvider] Online with queued messages, processing queue');
+        await _processOfflineQueue();
+      }
+    } catch (e) {
+      print('⚠️ [ChatProvider] Connectivity check failed: $e');
+      _isOnline = false;
+    }
+  }
+
+  /// Check if error is network-related
+  bool _isNetworkError(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    return errorString.contains('network') ||
+        errorString.contains('connection') ||
+        errorString.contains('socket') ||
+        errorString.contains('timeout') ||
+        errorString.contains('failed host lookup') ||
+        errorString.contains('no internet');
+  }
+
+  /// Process offline message queue
+  Future<void> _processOfflineQueue() async {
+    if (_offlineQueue == null) return;
+
+    try {
+      print('🔄 [ChatProvider] Processing offline queue...');
+      final success = await _offlineQueue!.processQueue();
+
+      if (success) {
+        print('✅ [ChatProvider] All queued messages sent successfully');
+        _error = null;
+      } else {
+        print('⚠️ [ChatProvider] Some messages failed to send');
+        _error = 'Some messages could not be sent. Will retry later.';
+      }
+
+      notifyListeners();
+    } catch (e) {
+      print('❌ [ChatProvider] Error processing offline queue: $e');
+    }
+  }
+
+  /// Manually trigger queue processing (for pull-to-refresh or retry button)
+  Future<void> retryQueuedMessages() async {
+    await _checkConnectivity();
+
+    if (_isOnline) {
+      await _processOfflineQueue();
+    } else {
+      _error = 'Still offline. Please check your connection.';
+      notifyListeners();
     }
   }
 
@@ -413,17 +682,20 @@ class ChatProvider with ChangeNotifier {
         break;
 
       case 'video_uploaded':
-        print('🎥 [ChatProvider] Stage: VIDEO_UPLOADED - Processing video data');
+        print(
+            '🎥 [ChatProvider] Stage: VIDEO_UPLOADED - Processing video data');
         _handleVideoUploadedStage(result);
         break;
 
       case 'confirm_data':
-        print('✅ [ChatProvider] Stage: CONFIRM_DATA - Processing extracted data');
+        print(
+            '✅ [ChatProvider] Stage: CONFIRM_DATA - Processing extracted data');
         _handleConfirmDataStage(result);
         break;
 
       case 'provide_info':
-        print('📝 [ChatProvider] Stage: PROVIDE_INFO - Processing missing fields');
+        print(
+            '📝 [ChatProvider] Stage: PROVIDE_INFO - Processing missing fields');
         _handleProvideInfoStage(result);
         break;
 
@@ -630,8 +902,9 @@ class ChatProvider with ChangeNotifier {
 
       // Set as current submission
       _currentSubmissionId = submissionId;
-      print('🔄 [ChatProvider] Retrying submission: $submissionId from stage ${state.stage}');
-      
+      print(
+          '🔄 [ChatProvider] Retrying submission: $submissionId from stage ${state.stage}');
+
       notifyListeners();
     } catch (e) {
       _error = 'Failed to retry submission: ${e.toString()}';
@@ -670,7 +943,7 @@ class ChatProvider with ChangeNotifier {
       // State is corrupted, offer to restart
       await _stateManager.removeCorruptedState(submissionId);
       print('🗑️ [ChatProvider] Removed corrupted submission: $submissionId');
-      
+
       // Start new submission
       startSubmission();
     } catch (e) {
@@ -706,6 +979,9 @@ class ChatProvider with ChangeNotifier {
   @override
   void dispose() {
     _streamSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    _syncService?.stopBackgroundSync();
+    _persistenceService?.close();
     super.dispose();
   }
 }

@@ -90,7 +90,13 @@
   - Test conversation switching
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 6. Implement Conversation Persistence
+- [x] 6. Implement Conversation Persistence
+
+
+
+
+
+
   - Update ConversationProvider to cache conversations locally using SharedPreferences
   - Load conversations from cache on app start
   - Sync with backend when online
@@ -100,7 +106,14 @@
   - Test cache persistence after app restart
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 7. Add Pull-to-Refresh
+- [x] 7. Add Pull-to-Refresh
+
+
+
+
+
+
+
   - Wrap conversation list in RefreshIndicator
   - Implement onRefresh callback to reload conversations
   - Test pull-to-refresh functionality

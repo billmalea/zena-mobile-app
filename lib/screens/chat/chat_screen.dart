@@ -8,6 +8,7 @@ import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
 import '../../widgets/chat/workflow/submission_recovery_dialog.dart';
 import '../../widgets/conversation/conversation_drawer.dart';
+import '../../widgets/connectivity_indicator.dart';
 
 /// ChatScreen - Main chat interface for interacting with the AI assistant
 /// Displays message history, handles user input, and shows property results
@@ -28,23 +29,23 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    
+
     // Check for recovered submission after frame is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForRecoveredSubmission();
     });
   }
-  
+
   /// Check if there's a recovered submission and prompt user
   void _checkForRecoveredSubmission() {
     final chatProvider = context.read<ChatProvider>();
-    
-    if (chatProvider.hasRecoveredSubmission && 
+
+    if (chatProvider.hasRecoveredSubmission &&
         chatProvider.currentSubmissionState != null) {
       _showRecoveryDialog(chatProvider);
     }
   }
-  
+
   /// Show recovery dialog to prompt user to continue or cancel submission
   void _showRecoveryDialog(ChatProvider chatProvider) {
     showDialog(
@@ -92,7 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // Check if user is manually scrolling (not at bottom)
     final isAtBottom = _scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 50;
-    
+
     if (!isAtBottom) {
       _isUserScrolling = true;
     } else if (isAtBottom) {
@@ -139,7 +140,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   text,
                   files,
                 ),
-                isLoading: chatProvider.isLoading || chatProvider.isUploadingFiles,
+                isLoading:
+                    chatProvider.isLoading || chatProvider.isUploadingFiles,
               );
             },
           ),
@@ -158,12 +160,15 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       title: Consumer2<ChatProvider, ConversationProvider>(
         builder: (context, chatProvider, conversationProvider, child) {
-          return Text(_getConversationTitle(chatProvider, conversationProvider));
+          return Text(
+              _getConversationTitle(chatProvider, conversationProvider));
         },
       ),
       actions: [
+        const ConnectivityIndicator(size: 10),
+        const SizedBox(width: 12),
         IconButton(
-          icon: const Icon(Icons.add_comment_outlined),
+          icon: const Icon(Icons.add),
           tooltip: 'New Chat',
           onPressed: () => _handleNewChat(context),
         ),
@@ -178,7 +183,8 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (context, chatProvider, child) {
         return ConversationDrawer(
           activeConversationId: chatProvider.conversationId,
-          onConversationSelected: (conversationId) => _handleConversationSelected(context, conversationId),
+          onConversationSelected: (conversationId) =>
+              _handleConversationSelected(context, conversationId),
           onNewConversation: () => _handleNewConversationFromDrawer(context),
         );
       },
@@ -187,13 +193,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// Get conversation title for app bar
   /// Returns conversation title based on first message or default
-  String _getConversationTitle(ChatProvider chatProvider, ConversationProvider conversationProvider) {
+  String _getConversationTitle(
+      ChatProvider chatProvider, ConversationProvider conversationProvider) {
     // If we have an active conversation ID, try to find it in the conversation list
     if (chatProvider.conversationId != null) {
       final conversation = conversationProvider.conversations
           .where((c) => c.id == chatProvider.conversationId)
           .firstOrNull;
-      
+
       if (conversation != null && conversation.messages.isNotEmpty) {
         // Generate title from first message
         final firstMessage = conversation.messages.first.content;
@@ -203,7 +210,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return firstMessage;
       }
     }
-    
+
     // Default title
     return 'Zena';
   }
@@ -211,12 +218,12 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Handle auto-scroll behavior when messages change
   void _handleAutoScroll(ChatProvider chatProvider) {
     final currentMessageCount = chatProvider.messages.length;
-    
+
     // Check if messages have changed
     if (currentMessageCount != _previousMessageCount) {
       final isNewMessage = currentMessageCount > _previousMessageCount;
       _previousMessageCount = currentMessageCount;
-      
+
       // Auto-scroll to bottom if:
       // 1. New message arrived AND user is not manually scrolling up
       // 2. OR we're loading (streaming response)
@@ -239,7 +246,8 @@ class _ChatScreenState extends State<ChatScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: chatProvider.messages.length + (chatProvider.isLoading ? 1 : 0),
+      itemCount:
+          chatProvider.messages.length + (chatProvider.isLoading ? 1 : 0),
       itemBuilder: (context, index) {
         // Show typing indicator at the end if loading
         if (index == chatProvider.messages.length) {
@@ -250,7 +258,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
 
         final message = chatProvider.messages[index];
-        
+
         // Message bubble now handles both content and tool results
         return MessageBubble(
           message: message,
@@ -282,7 +290,10 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               'Start a conversation',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.6),
                   ),
             ),
             const SizedBox(height: 12),
@@ -290,7 +301,10 @@ class _ChatScreenState extends State<ChatScreen> {
               'Ask me about properties, rentals, or anything else!',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.5),
                   ),
             ),
           ],
@@ -302,7 +316,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Build error banner with dismiss and retry options
   Widget _buildErrorBanner(BuildContext context, ChatProvider chatProvider) {
     final theme = Theme.of(context);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -327,8 +341,8 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text(
               chatProvider.error ?? 'An error occurred',
               style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
+                color: theme.colorScheme.error,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -352,8 +366,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-
-
   /// Handle sending a message
   Future<void> _handleSendMessage(
     BuildContext context,
@@ -366,9 +378,9 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       // Reset user scrolling flag when sending a new message
       _isUserScrolling = false;
-      
+
       await chatProvider.sendMessage(text, files);
-      
+
       // Auto-scroll will be handled by _handleAutoScroll
     } catch (e) {
       if (context.mounted) {
@@ -378,21 +390,22 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Handle conversation selection from drawer
-  Future<void> _handleConversationSelected(BuildContext context, String conversationId) async {
+  Future<void> _handleConversationSelected(
+      BuildContext context, String conversationId) async {
     final chatProvider = context.read<ChatProvider>();
     final conversationProvider = context.read<ConversationProvider>();
-    
+
     try {
       // Reset scroll state
       _previousMessageCount = 0;
       _isUserScrolling = false;
-      
+
       // Load the selected conversation
       await chatProvider.loadConversation(conversationId);
-      
+
       // Update active conversation in conversation provider
       conversationProvider.setActiveConversation(conversationId);
-      
+
       // Close the drawer
       if (context.mounted) {
         Navigator.pop(context);
@@ -409,7 +422,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _handleNewConversationFromDrawer(BuildContext context) async {
     // Close drawer first
     Navigator.pop(context);
-    
+
     // Then handle new chat
     await _handleNewChat(context);
   }
@@ -448,15 +461,16 @@ class _ChatScreenState extends State<ChatScreen> {
       // Reset scroll state
       _previousMessageCount = 0;
       _isUserScrolling = false;
-      
+
       await chatProvider.startNewConversation();
-      
+
       // Clear active conversation in conversation provider
-      conversationProvider.setActiveConversation(chatProvider.conversationId ?? '');
-      
+      conversationProvider
+          .setActiveConversation(chatProvider.conversationId ?? '');
+
       // Refresh conversation list to include the new conversation
       await conversationProvider.loadConversations(refresh: true);
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -491,7 +505,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Show error message
   void _showError(BuildContext context, String message) {
     final theme = Theme.of(context);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

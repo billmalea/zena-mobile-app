@@ -2,210 +2,232 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zena_mobile/models/message.dart';
 
 void main() {
-  group('Message Model - Metadata Tests', () {
-    test('should create message with metadata', () {
-      final metadata = {
-        'submissionId': 'sub_123',
-        'workflowStage': 'confirmData',
-      };
-
+  group('Message Model with Persistence Fields', () {
+    test('should create message with default persistence fields', () {
       final message = Message(
-        id: 'msg_1',
+        id: 'msg-1',
         role: 'user',
-        content: 'Test message',
-        createdAt: DateTime(2025, 10, 18),
-        metadata: metadata,
+        content: 'Hello',
+        createdAt: DateTime.now(),
       );
 
-      expect(message.metadata, equals(metadata));
-      expect(message.submissionId, equals('sub_123'));
-      expect(message.workflowStage, equals('confirmData'));
-      expect(message.isPartOfWorkflow, isTrue);
+      expect(message.synced, false);
+      expect(message.localOnly, false);
+      expect(message.updatedAt, isNull);
     });
 
-    test('should create message without metadata', () {
-      final message = Message(
-        id: 'msg_1',
-        role: 'user',
-        content: 'Test message',
-        createdAt: DateTime(2025, 10, 18),
-      );
-
-      expect(message.metadata, isNull);
-      expect(message.submissionId, isNull);
-      expect(message.workflowStage, isNull);
-      expect(message.isPartOfWorkflow, isFalse);
-    });
-
-    test('should serialize message with metadata to JSON', () {
-      final metadata = {
-        'submissionId': 'sub_123',
-        'workflowStage': 'confirmData',
-      };
+    test('should create message with custom persistence fields', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
 
       final message = Message(
-        id: 'msg_1',
-        role: 'user',
-        content: 'Test message',
-        createdAt: DateTime(2025, 10, 18, 10, 30),
-        metadata: metadata,
-      );
-
-      final json = message.toJson();
-
-      expect(json['id'], equals('msg_1'));
-      expect(json['role'], equals('user'));
-      expect(json['content'], equals('Test message'));
-      expect(json['createdAt'], equals('2025-10-18T10:30:00.000'));
-      expect(json['metadata'], equals(metadata));
-      expect(json['metadata']['submissionId'], equals('sub_123'));
-      expect(json['metadata']['workflowStage'], equals('confirmData'));
-    });
-
-    test('should serialize message without metadata to JSON', () {
-      final message = Message(
-        id: 'msg_1',
-        role: 'user',
-        content: 'Test message',
-        createdAt: DateTime(2025, 10, 18, 10, 30),
-      );
-
-      final json = message.toJson();
-
-      expect(json['id'], equals('msg_1'));
-      expect(json['role'], equals('user'));
-      expect(json['content'], equals('Test message'));
-      expect(json['createdAt'], equals('2025-10-18T10:30:00.000'));
-      expect(json['metadata'], isNull);
-    });
-
-    test('should deserialize message with metadata from JSON', () {
-      final json = {
-        'id': 'msg_1',
-        'role': 'user',
-        'content': 'Test message',
-        'createdAt': '2025-10-18T10:30:00.000',
-        'metadata': {
-          'submissionId': 'sub_123',
-          'workflowStage': 'confirmData',
-        },
-      };
-
-      final message = Message.fromJson(json);
-
-      expect(message.id, equals('msg_1'));
-      expect(message.role, equals('user'));
-      expect(message.content, equals('Test message'));
-      expect(message.createdAt, equals(DateTime(2025, 10, 18, 10, 30)));
-      expect(message.metadata, isNotNull);
-      expect(message.submissionId, equals('sub_123'));
-      expect(message.workflowStage, equals('confirmData'));
-      expect(message.isPartOfWorkflow, isTrue);
-    });
-
-    test('should deserialize message without metadata from JSON', () {
-      final json = {
-        'id': 'msg_1',
-        'role': 'user',
-        'content': 'Test message',
-        'createdAt': '2025-10-18T10:30:00.000',
-      };
-
-      final message = Message.fromJson(json);
-
-      expect(message.id, equals('msg_1'));
-      expect(message.role, equals('user'));
-      expect(message.content, equals('Test message'));
-      expect(message.createdAt, equals(DateTime(2025, 10, 18, 10, 30)));
-      expect(message.metadata, isNull);
-      expect(message.submissionId, isNull);
-      expect(message.workflowStage, isNull);
-      expect(message.isPartOfWorkflow, isFalse);
-    });
-
-    test('should round-trip serialize and deserialize with metadata', () {
-      final originalMetadata = {
-        'submissionId': 'sub_456',
-        'workflowStage': 'provideInfo',
-        'customField': 'customValue',
-      };
-
-      final originalMessage = Message(
-        id: 'msg_2',
+        id: 'msg-1',
         role: 'assistant',
-        content: 'AI response',
-        createdAt: DateTime(2025, 10, 18, 11, 45),
-        metadata: originalMetadata,
+        content: 'Hi there',
+        createdAt: now,
+        synced: true,
+        localOnly: true,
+        updatedAt: updatedAt,
       );
 
-      final json = originalMessage.toJson();
-      final deserializedMessage = Message.fromJson(json);
-
-      expect(deserializedMessage.id, equals(originalMessage.id));
-      expect(deserializedMessage.role, equals(originalMessage.role));
-      expect(deserializedMessage.content, equals(originalMessage.content));
-      expect(deserializedMessage.createdAt, equals(originalMessage.createdAt));
-      expect(deserializedMessage.metadata, equals(originalMetadata));
-      expect(deserializedMessage.submissionId, equals('sub_456'));
-      expect(deserializedMessage.workflowStage, equals('provideInfo'));
-      expect(deserializedMessage.isPartOfWorkflow, isTrue);
+      expect(message.synced, true);
+      expect(message.localOnly, true);
+      expect(message.updatedAt, updatedAt);
     });
 
-    test('should copy message with updated metadata', () {
-      final originalMessage = Message(
-        id: 'msg_1',
-        role: 'user',
-        content: 'Test message',
-        createdAt: DateTime(2025, 10, 18),
-        metadata: {'submissionId': 'sub_123'},
-      );
-
-      final updatedMetadata = {
-        'submissionId': 'sub_123',
-        'workflowStage': 'finalConfirm',
-      };
-
-      final copiedMessage = originalMessage.copyWith(
-        metadata: updatedMetadata,
-      );
-
-      expect(copiedMessage.id, equals(originalMessage.id));
-      expect(copiedMessage.role, equals(originalMessage.role));
-      expect(copiedMessage.content, equals(originalMessage.content));
-      expect(copiedMessage.metadata, equals(updatedMetadata));
-      expect(copiedMessage.submissionId, equals('sub_123'));
-      expect(copiedMessage.workflowStage, equals('finalConfirm'));
-    });
-
-    test('should handle metadata with various data types', () {
-      final metadata = {
-        'submissionId': 'sub_789',
-        'workflowStage': 'start',
-        'stepNumber': 1,
-        'isComplete': false,
-        'tags': ['property', 'submission'],
-        'nestedData': {
-          'key1': 'value1',
-          'key2': 123,
-        },
-      };
+    test('should serialize message with persistence fields to JSON', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
 
       final message = Message(
-        id: 'msg_3',
+        id: 'msg-1',
         role: 'user',
-        content: 'Complex metadata test',
-        createdAt: DateTime(2025, 10, 18),
-        metadata: metadata,
+        content: 'Test message',
+        createdAt: now,
+        synced: true,
+        localOnly: false,
+        updatedAt: updatedAt,
       );
 
       final json = message.toJson();
-      final deserializedMessage = Message.fromJson(json);
 
-      expect(deserializedMessage.metadata, equals(metadata));
-      expect(deserializedMessage.metadata!['stepNumber'], equals(1));
-      expect(deserializedMessage.metadata!['isComplete'], equals(false));
-      expect(deserializedMessage.metadata!['tags'], equals(['property', 'submission']));
-      expect(deserializedMessage.metadata!['nestedData']['key1'], equals('value1'));
+      expect(json['id'], 'msg-1');
+      expect(json['role'], 'user');
+      expect(json['content'], 'Test message');
+      expect(json['createdAt'], now.toIso8601String());
+      expect(json['synced'], true);
+      expect(json['localOnly'], false);
+      expect(json['updatedAt'], updatedAt.toIso8601String());
+    });
+
+    test('should deserialize message with persistence fields from JSON', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
+
+      final json = {
+        'id': 'msg-1',
+        'role': 'assistant',
+        'content': 'Test response',
+        'createdAt': now.toIso8601String(),
+        'synced': true,
+        'localOnly': false,
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+
+      final message = Message.fromJson(json);
+
+      expect(message.id, 'msg-1');
+      expect(message.role, 'assistant');
+      expect(message.content, 'Test response');
+      expect(message.createdAt.toIso8601String(), now.toIso8601String());
+      expect(message.synced, true);
+      expect(message.localOnly, false);
+      expect(message.updatedAt?.toIso8601String(), updatedAt.toIso8601String());
+    });
+
+    test('should deserialize message with missing persistence fields', () {
+      final now = DateTime.now();
+
+      final json = {
+        'id': 'msg-1',
+        'role': 'user',
+        'content': 'Test',
+        'createdAt': now.toIso8601String(),
+      };
+
+      final message = Message.fromJson(json);
+
+      expect(message.synced, false);
+      expect(message.localOnly, false);
+      expect(message.updatedAt, isNull);
+    });
+
+    test('should serialize message with null updatedAt', () {
+      final now = DateTime.now();
+
+      final message = Message(
+        id: 'msg-1',
+        role: 'user',
+        content: 'Test',
+        createdAt: now,
+        synced: false,
+        localOnly: false,
+      );
+
+      final json = message.toJson();
+
+      expect(json['updatedAt'], isNull);
+    });
+
+    test('should copy message with updated persistence fields', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
+
+      final original = Message(
+        id: 'msg-1',
+        role: 'user',
+        content: 'Original',
+        createdAt: now,
+        synced: false,
+        localOnly: false,
+      );
+
+      final updated = original.copyWith(
+        synced: true,
+        localOnly: true,
+        updatedAt: updatedAt,
+      );
+
+      expect(updated.id, original.id);
+      expect(updated.role, original.role);
+      expect(updated.content, original.content);
+      expect(updated.createdAt, original.createdAt);
+      expect(updated.synced, true);
+      expect(updated.localOnly, true);
+      expect(updated.updatedAt, updatedAt);
+    });
+
+    test('should copy message without changing persistence fields', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
+
+      final original = Message(
+        id: 'msg-1',
+        role: 'user',
+        content: 'Original',
+        createdAt: now,
+        synced: true,
+        localOnly: true,
+        updatedAt: updatedAt,
+      );
+
+      final copied = original.copyWith(content: 'Updated content');
+
+      expect(copied.content, 'Updated content');
+      expect(copied.synced, true);
+      expect(copied.localOnly, true);
+      expect(copied.updatedAt, updatedAt);
+    });
+
+    test('should serialize and deserialize message with tool results and persistence fields', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
+
+      final toolResult = ToolResult(
+        toolName: 'search',
+        result: {'query': 'test', 'results': []},
+      );
+
+      final message = Message(
+        id: 'msg-1',
+        role: 'assistant',
+        content: 'Here are the results',
+        createdAt: now,
+        toolResults: [toolResult],
+        synced: true,
+        localOnly: false,
+        updatedAt: updatedAt,
+      );
+
+      final json = message.toJson();
+      final deserialized = Message.fromJson(json);
+
+      expect(deserialized.id, message.id);
+      expect(deserialized.role, message.role);
+      expect(deserialized.content, message.content);
+      expect(deserialized.toolResults?.length, 1);
+      expect(deserialized.toolResults?[0].toolName, 'search');
+      expect(deserialized.synced, true);
+      expect(deserialized.localOnly, false);
+      expect(deserialized.updatedAt?.toIso8601String(), updatedAt.toIso8601String());
+    });
+
+    test('should serialize and deserialize message with metadata and persistence fields', () {
+      final now = DateTime.now();
+      final updatedAt = now.add(Duration(minutes: 5));
+
+      final message = Message(
+        id: 'msg-1',
+        role: 'user',
+        content: 'Submit property',
+        createdAt: now,
+        metadata: {
+          'submissionId': 'sub-123',
+          'workflowStage': 'property_submission',
+        },
+        synced: false,
+        localOnly: true,
+        updatedAt: updatedAt,
+      );
+
+      final json = message.toJson();
+      final deserialized = Message.fromJson(json);
+
+      expect(deserialized.metadata?['submissionId'], 'sub-123');
+      expect(deserialized.metadata?['workflowStage'], 'property_submission');
+      expect(deserialized.synced, false);
+      expect(deserialized.localOnly, true);
+      expect(deserialized.updatedAt?.toIso8601String(), updatedAt.toIso8601String());
     });
   });
 }

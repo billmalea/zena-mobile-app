@@ -7,6 +7,9 @@ class Message {
   final List<ToolResult>? toolResults;
   final DateTime createdAt;
   final Map<String, dynamic>? metadata;
+  final bool synced;
+  final bool localOnly;
+  final DateTime? updatedAt;
 
   Message({
     required this.id,
@@ -15,6 +18,9 @@ class Message {
     this.toolResults,
     required this.createdAt,
     this.metadata,
+    this.synced = false,
+    this.localOnly = false,
+    this.updatedAt,
   });
 
   /// Check if message is from user
@@ -45,6 +51,11 @@ class Message {
           : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
+      synced: json['synced'] as bool? ?? false,
+      localOnly: json['localOnly'] as bool? ?? false,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : null,
     );
   }
 
@@ -57,6 +68,9 @@ class Message {
       'toolResults': toolResults?.map((tr) => tr.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'metadata': metadata,
+      'synced': synced,
+      'localOnly': localOnly,
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -68,6 +82,9 @@ class Message {
     List<ToolResult>? toolResults,
     DateTime? createdAt,
     Map<String, dynamic>? metadata,
+    bool? synced,
+    bool? localOnly,
+    DateTime? updatedAt,
   }) {
     return Message(
       id: id ?? this.id,
@@ -76,6 +93,9 @@ class Message {
       toolResults: toolResults ?? this.toolResults,
       createdAt: createdAt ?? this.createdAt,
       metadata: metadata ?? this.metadata,
+      synced: synced ?? this.synced,
+      localOnly: localOnly ?? this.localOnly,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
