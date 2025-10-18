@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../common/shimmer_widget.dart';
 
 /// Shared styling utilities for tool result cards
 /// Provides consistent theming, spacing, and decoration across all cards
@@ -220,7 +221,7 @@ class CardStyles {
     );
   }
 
-  /// Loading placeholder for images
+  /// Loading placeholder for images with shimmer effect
   static Widget imageLoadingPlaceholder(
     BuildContext context, {
     double height = 200,
@@ -229,28 +230,28 @@ class CardStyles {
   }) {
     final theme = Theme.of(context);
     
-    return Container(
-      height: height,
-      width: double.infinity,
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 48,
-            color: theme.disabledColor,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+    return ShimmerWidget(
+      child: Container(
+        height: height,
+        width: double.infinity,
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 48,
+              color: theme.disabledColor,
             ),
-          ),
-          const SizedBox(height: 12),
-          loadingIndicator(context),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

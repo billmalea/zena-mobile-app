@@ -976,12 +976,67 @@ class ChatProvider with ChangeNotifier {
     return _stateManager.getState(submissionId);
   }
 
+  /// Manually trigger message sync for current conversation
+  /// Useful for pull-to-refresh or manual sync button
+  Future<void> syncCurrentConversation() async {
+    if (_syncService == null || _conversationId == null) {
+      print('⚠️ [ChatProvider] Cannot sync: service or conversation not initialized');
+      return;
+    }
+
+    try {
+      print('🔄 [ChatProvider] Manually syncing conversation: $_conversationId');
+      await _syncService!.syncMessages(_conversationId!);
+      
+      // Reload messages from local storage to reflect synced changes
+      if (_persistenceService != null) {
+        final syncedMessages = await _persistenceService!.loadMessages(_conversationId!);
+        _messages = syncedMessages;
+        print('✅ [ChatProvider] Conversation synced successfully');
+        notifyListeners();
+      }
+    } catch (e) {
+      print('❌ [ChatProvider] Failed to sync conversation: $e');
+      _error = 'Failed to sync messages: ${e.toString()}';
+      notifyListeners();
+    }
+  }
+
+  /// Manually trigger sync for all conversations
+  /// Useful for app startup or settings sync button
+  Future<void> syncAllConversations() async {
+    if (_syncService == null) {
+      print('⚠️ [ChatProvider] Cannot sync: service not initialized');
+      return;
+    }
+
+    try {
+      print('🔄 [ChatProvider] Syncing all conversations');
+      await _syncService!.syncAllConversations();
+      print('✅ [ChatProvider] All conversations synced successfully');
+    } catch (e) {
+      print('❌ [ChatProvider] Failed to sync all conversations: $e');
+      // Don't set error for background sync failures
+    }
+  }
+
   @override
   void dispose() {
+    print('🧹 [ChatProvider] Disposing resources');
+    
+    // Stop background sync
+    if (_syncService != null) {
+      _syncService!.stopBackgroundSync();
+      print('✅ [ChatProvider] Background sync stopped');
+    }
+    
+    // Cancel stream subscriptions
     _streamSubscription?.cancel();
     _connectivitySubscription?.cancel();
-    _syncService?.stopBackgroundSync();
+    
+    // Close persistence service
     _persistenceService?.close();
+    
     super.dispose();
   }
 }

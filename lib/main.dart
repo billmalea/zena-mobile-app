@@ -8,6 +8,7 @@ import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 import 'providers/conversation_provider.dart';
+import 'providers/theme_provider.dart';
 import 'services/submission_state_manager.dart';
 import 'services/chat_service.dart';
 import 'screens/auth/welcome_screen.dart';
@@ -26,32 +27,48 @@ void main() async {
     anonKey: AppConfig.supabaseAnonKey,
   );
 
-  // Initialize SharedPreferences for submission state management
+  // Initialize SharedPreferences for submission state management and theme
   final prefs = await SharedPreferences.getInstance();
   final stateManager = SubmissionStateManager(prefs);
+  final themeProvider = ThemeProvider(prefs);
 
-  runApp(ZenaApp(stateManager: stateManager));
+  runApp(ZenaApp(
+    stateManager: stateManager,
+    themeProvider: themeProvider,
+  ));
 }
 
 /// Root application widget
 class ZenaApp extends StatelessWidget {
   final SubmissionStateManager stateManager;
+  final ThemeProvider themeProvider;
 
-  const ZenaApp({super.key, required this.stateManager});
+  const ZenaApp({
+    super.key,
+    required this.stateManager,
+    required this.themeProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider(stateManager)),
         ChangeNotifierProvider(create: (_) => ConversationProvider(ChatService())),
       ],
-      child: MaterialApp(
-        title: 'Zena',
-        theme: AppTheme.darkTheme,
-        debugShowCheckedModeBanner: false,
-        home: const AuthWrapper(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'Zena',
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            debugShowCheckedModeBanner: false,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }

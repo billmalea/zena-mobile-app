@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/conversation_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../common/shimmer_widget.dart';
 import 'conversation_list_item.dart';
 import 'conversation_search.dart';
 
@@ -58,6 +61,10 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
             Expanded(
               child: _buildConversationList(context),
             ),
+
+            // Footer with user info and settings
+            const Divider(height: 1),
+            _buildFooter(context),
           ],
         ),
       ),
@@ -93,11 +100,9 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
   Widget _buildConversationList(BuildContext context) {
     return Consumer<ConversationProvider>(
       builder: (context, provider, child) {
-        // Show loading indicator when loading and no conversations
+        // Show shimmer loading state when loading and no conversations
         if (provider.isLoading && provider.conversations.isEmpty) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const ShimmerConversationList(itemCount: 8);
         }
 
         // Show error message when error occurs
@@ -211,5 +216,130 @@ class _ConversationDrawerState extends State<ConversationDrawer> {
   /// Handle pull-to-refresh action
   Future<void> _handleRefresh(ConversationProvider provider) async {
     await provider.loadConversations(refresh: true);
+  }
+
+  /// Build footer with user info, theme toggle, and sign out button
+  Widget _buildFooter(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // Extract user's name from email or metadata
+        String userName = 'User';
+        String userInitial = 'U';
+
+        if (authProvider.user?.email != null) {
+          final email = authProvider.user!.email!;
+          // Try to get name from user metadata first
+          final metadataName =
+              authProvider.user!.userMetadata?['name'] as String?;
+
+          if (metadataName != null && metadataName.isNotEmpty) {
+            userName = metadataName;
+            userInitial = metadataName[0].toUpperCase();
+          } else {
+            // Use email prefix as fallback
+            userName = email.split('@').first;
+            userInitial = userName[0].toUpperCase();
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // User info row
+              Row(
+                children: [
+                  // Avatar with user initials
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: theme.colorScheme.primary,
+                    child: Text(
+                      userInitial,
+                      style: TextStyle(
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // User name
+                  Expanded(
+                    child: Text(
+                      userName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Theme toggle button
+                  IconButton(
+                    icon: Icon(
+                      isDark ? Icons.light_mode : Icons.dark_mode,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    onPressed: () {
+                      final themeProvider = context.read<ThemeProvider>();
+                      themeProvider.setThemeMode(
+                        isDark ? ThemeMode.light : ThemeMode.dark,
+                      );
+                    },
+                    tooltip: isDark ? 'Light Mode' : 'Dark Mode',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Sign out button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    // Show confirmation dialog
+                    final shouldSignOut = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Sign Out'),
+                        content:
+                            const Text('Are you sure you want to sign out?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text('Sign Out'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldSignOut == true && context.mounted) {
+                      await authProvider.signOut();
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Sign Out'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/conversation_provider.dart';
+import '../../widgets/chat/enhanced_empty_state.dart';
 import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
 import '../../widgets/chat/workflow/submission_recovery_dialog.dart';
 import '../../widgets/conversation/conversation_drawer.dart';
 import '../../widgets/connectivity_indicator.dart';
+import '../../widgets/common/shimmer_widget.dart';
 
 /// ChatScreen - Main chat interface for interacting with the AI assistant
 /// Displays message history, handles user input, and shows property results
@@ -249,11 +252,17 @@ class _ChatScreenState extends State<ChatScreen> {
       itemCount:
           chatProvider.messages.length + (chatProvider.isLoading ? 1 : 0),
       itemBuilder: (context, index) {
-        // Show typing indicator at the end if loading
+        // Show shimmer message bubble at the end if loading
         if (index == chatProvider.messages.length) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: TypingIndicator(),
+          return const Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: TypingIndicator(),
+              ),
+              SizedBox(height: 8),
+              ShimmerMessageBubble(isUser: false),
+            ],
           );
         }
 
@@ -275,41 +284,29 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// Build empty state when no messages
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 80,
-              color: Theme.of(context).disabledColor,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Start a conversation',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6),
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Ask me about properties, rentals, or anything else!',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.5),
-                  ),
-            ),
-          ],
-        ),
-      ),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // Extract user's first name from email or use full email
+        String? userName;
+        if (authProvider.user?.email != null) {
+          final email = authProvider.user!.email!;
+          // Try to get name from user metadata first
+          userName = authProvider.user!.userMetadata?['name'] as String?;
+          
+          // If no name in metadata, use email prefix
+          if (userName == null || userName.isEmpty) {
+            userName = email.split('@').first;
+          }
+        }
+
+        return EnhancedEmptyState(
+          userName: userName,
+          onQuerySelected: (query) {
+            final chatProvider = context.read<ChatProvider>();
+            _handleSendMessage(context, chatProvider, query, null);
+          },
+        );
+      },
     );
   }
 
