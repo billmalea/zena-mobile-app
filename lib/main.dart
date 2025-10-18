@@ -7,7 +7,9 @@ import 'config/app_config.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/conversation_provider.dart';
 import 'services/submission_state_manager.dart';
+import 'services/chat_service.dart';
 import 'screens/auth/welcome_screen.dart';
 import 'screens/chat/chat_screen.dart';
 
@@ -43,6 +45,7 @@ class ZenaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider(stateManager)),
+        ChangeNotifierProvider(create: (_) => ConversationProvider(ChatService())),
       ],
       child: MaterialApp(
         title: 'Zena',

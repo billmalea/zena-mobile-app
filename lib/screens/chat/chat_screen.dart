@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../providers/chat_provider.dart';
+import '../../providers/conversation_provider.dart';
 import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
 import '../../widgets/chat/workflow/submission_recovery_dialog.dart';
+import '../../widgets/conversation/conversation_drawer.dart';
 
 /// ChatScreen - Main chat interface for interacting with the AI assistant
 /// Displays message history, handles user input, and shows property results
@@ -17,6 +19,7 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ScrollController _scrollController = ScrollController();
   int _previousMessageCount = 0;
   bool _isUserScrolling = false;
@@ -100,7 +103,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: _buildAppBar(context),
+      drawer: _buildDrawer(context),
       body: Column(
         children: [
           // Error banner (if error exists)
@@ -143,10 +148,19 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Build AppBar with title and new chat button
+  /// Build AppBar with menu button, conversation title, and new chat button
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      title: const Text('Zena'),
+      leading: IconButton(
+        icon: const Icon(Icons.menu),
+        tooltip: 'Conversations',
+        onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
+      title: Consumer2<ChatProvider, ConversationProvider>(
+        builder: (context, chatProvider, conversationProvider, child) {
+          return Text(_getConversationTitle(chatProvider, conversationProvider));
+        },
+      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.add_comment_outlined),
@@ -156,6 +170,42 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(width: 8),
       ],
     );
+  }
+
+  /// Build conversation drawer
+  Widget _buildDrawer(BuildContext context) {
+    return Consumer<ChatProvider>(
+      builder: (context, chatProvider, child) {
+        return ConversationDrawer(
+          activeConversationId: chatProvider.conversationId,
+          onConversationSelected: (conversationId) => _handleConversationSelected(context, conversationId),
+          onNewConversation: () => _handleNewConversationFromDrawer(context),
+        );
+      },
+    );
+  }
+
+  /// Get conversation title for app bar
+  /// Returns conversation title based on first message or default
+  String _getConversationTitle(ChatProvider chatProvider, ConversationProvider conversationProvider) {
+    // If we have an active conversation ID, try to find it in the conversation list
+    if (chatProvider.conversationId != null) {
+      final conversation = conversationProvider.conversations
+          .where((c) => c.id == chatProvider.conversationId)
+          .firstOrNull;
+      
+      if (conversation != null && conversation.messages.isNotEmpty) {
+        // Generate title from first message
+        final firstMessage = conversation.messages.first.content;
+        if (firstMessage.length > 30) {
+          return '${firstMessage.substring(0, 30)}...';
+        }
+        return firstMessage;
+      }
+    }
+    
+    // Default title
+    return 'Zena';
   }
 
   /// Handle auto-scroll behavior when messages change
@@ -327,9 +377,47 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Handle conversation selection from drawer
+  Future<void> _handleConversationSelected(BuildContext context, String conversationId) async {
+    final chatProvider = context.read<ChatProvider>();
+    final conversationProvider = context.read<ConversationProvider>();
+    
+    try {
+      // Reset scroll state
+      _previousMessageCount = 0;
+      _isUserScrolling = false;
+      
+      // Load the selected conversation
+      await chatProvider.loadConversation(conversationId);
+      
+      // Update active conversation in conversation provider
+      conversationProvider.setActiveConversation(conversationId);
+      
+      // Close the drawer
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close drawer even on error
+        _showError(context, 'Failed to load conversation: ${e.toString()}');
+      }
+    }
+  }
+
+  /// Handle new conversation from drawer
+  Future<void> _handleNewConversationFromDrawer(BuildContext context) async {
+    // Close drawer first
+    Navigator.pop(context);
+    
+    // Then handle new chat
+    await _handleNewChat(context);
+  }
+
   /// Handle new chat button press
   Future<void> _handleNewChat(BuildContext context) async {
     final chatProvider = context.read<ChatProvider>();
+    final conversationProvider = context.read<ConversationProvider>();
 
     // Show confirmation dialog if there are existing messages
     if (chatProvider.messages.isNotEmpty) {
@@ -362,6 +450,12 @@ class _ChatScreenState extends State<ChatScreen> {
       _isUserScrolling = false;
       
       await chatProvider.startNewConversation();
+      
+      // Clear active conversation in conversation provider
+      conversationProvider.setActiveConversation(chatProvider.conversationId ?? '');
+      
+      // Refresh conversation list to include the new conversation
+      await conversationProvider.loadConversations(refresh: true);
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
