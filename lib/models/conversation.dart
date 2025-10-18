@@ -9,12 +9,22 @@ class Conversation {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // Optional fields from list API response
+  final String? title;
+  final String? lastMessage;
+  final DateTime? lastMessageTime;
+  final int? messageCount;
+
   Conversation({
     required this.id,
     required this.userId,
     required this.messages,
     required this.createdAt,
     required this.updatedAt,
+    this.title,
+    this.lastMessage,
+    this.lastMessageTime,
+    this.messageCount,
   });
 
   /// Get preview of last message (first 50 characters)
@@ -66,8 +76,16 @@ class Conversation {
               .map((m) => Message.fromJson(m as Map<String, dynamic>))
               .toList()
           : [],
-      createdAt: DateTime.parse(json['createdAt'] as String? ?? json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String? ?? json['updated_at'] as String),
+      createdAt: DateTime.parse(
+          json['createdAt'] as String? ?? json['created_at'] as String),
+      updatedAt: DateTime.parse(
+          json['updatedAt'] as String? ?? json['updated_at'] as String),
+      title: json['title'] as String?,
+      lastMessage: json['lastMessage'] as String?,
+      lastMessageTime: json['lastMessageTime'] != null
+          ? DateTime.parse(json['lastMessageTime'] as String)
+          : null,
+      messageCount: json['messageCount'] as int?,
     );
   }
 
@@ -89,6 +107,10 @@ class Conversation {
     List<Message>? messages,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? title,
+    String? lastMessage,
+    DateTime? lastMessageTime,
+    int? messageCount,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -96,6 +118,10 @@ class Conversation {
       messages: messages ?? this.messages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      title: title ?? this.title,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageTime: lastMessageTime ?? this.lastMessageTime,
+      messageCount: messageCount ?? this.messageCount,
     );
   }
 }

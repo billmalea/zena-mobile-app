@@ -102,17 +102,24 @@ class ChatProvider with ChangeNotifier {
   /// Load a conversation by ID
   Future<void> loadConversation(String conversationId) async {
     try {
+      print('🔍 [ChatProvider.loadConversation] Loading conversation: $conversationId');
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       final conversation = await _chatService.getConversation(conversationId);
+      print('✅ [ChatProvider.loadConversation] Conversation loaded');
+      print('🆔 [ChatProvider.loadConversation] Conversation ID: ${conversation.id}');
+      print('💬 [ChatProvider.loadConversation] Message count: ${conversation.messages.length}');
+      
       _conversationId = conversation.id;
       _messages = List.from(conversation.messages);
 
       _isLoading = false;
       notifyListeners();
+      print('✅ [ChatProvider.loadConversation] State updated and listeners notified');
     } catch (e) {
+      print('❌ [ChatProvider.loadConversation] Error: $e');
       _error = 'Failed to load conversation: ${e.toString()}';
       _isLoading = false;
       notifyListeners();

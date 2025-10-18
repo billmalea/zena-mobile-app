@@ -13,7 +13,8 @@ class ChatService {
 
   ChatService() {
     _chatClient = ChatClient(
-      baseUrl: AppConfig.baseUrl, // Use baseUrl, not apiUrl (client adds /api/chat)
+      baseUrl:
+          AppConfig.baseUrl, // Use baseUrl, not apiUrl (client adds /api/chat)
       authService: _authService,
     );
   }
@@ -32,14 +33,15 @@ class ChatService {
     print('🎬 [ChatService] sendMessage called');
     print('💬 [ChatService] Message: $message');
     print('🆔 [ChatService] Conversation ID: $conversationId');
-    
+
     try {
       print('🔄 [ChatService] Calling ChatClient...');
       await for (final response in _chatClient.sendMessage(
         message: message,
         conversationId: conversationId,
       )) {
-        print('📥 [ChatService] Received response: text=${response.text.length} chars, error=${response.error}');
+        print(
+            '📥 [ChatService] Received response: text=${response.text.length} chars, error=${response.error}');
         // Convert ChatResponse to ChatEvent
         if (response.hasError) {
           print('❌ [ChatService] Error response: ${response.error}');
@@ -48,7 +50,8 @@ class ChatService {
             content: response.error,
           );
         } else if (response.text.isNotEmpty) {
-          print('✅ [ChatService] Text response: ${response.text.substring(0, response.text.length > 50 ? 50 : response.text.length)}...');
+          print(
+              '✅ [ChatService] Text response: ${response.text.substring(0, response.text.length > 50 ? 50 : response.text.length)}...');
           yield ChatEvent(
             type: 'text',
             content: response.text,
@@ -96,17 +99,53 @@ class ChatService {
   Future<Conversation> getConversation(String? conversationId) async {
     try {
       final endpoint = conversationId != null
-          ? '${AppConfig.conversationEndpoint}?id=$conversationId'
+          ? '${AppConfig.conversationEndpoint}?conversationId=$conversationId' // Fixed: was ?id=
           : AppConfig.conversationEndpoint;
+
+      print('🔍 [ChatService.getConversation] Fetching conversation');
+      print('📍 [ChatService.getConversation] Endpoint: $endpoint');
+      print(
+          '🆔 [ChatService.getConversation] Conversation ID: $conversationId');
 
       final response = await _apiService.get(endpoint);
 
+      print('📥 [ChatService.getConversation] Response received');
+      print(
+          '📦 [ChatService.getConversation] Response type: ${response.runtimeType}');
+      print('📄 [ChatService.getConversation] Response data: $response');
+
       if (response == null) {
+        print('❌ [ChatService.getConversation] Response is null');
         throw ApiException('No conversation data received', null);
       }
 
-      return Conversation.fromJson(response as Map<String, dynamic>);
-    } catch (e) {
+      final responseMap = response as Map<String, dynamic>;
+
+      // Check if response has nested conversation structure
+      Map<String, dynamic> conversationData;
+      if (responseMap.containsKey('conversation')) {
+        conversationData = responseMap['conversation'] as Map<String, dynamic>;
+        final messages = responseMap['messages'] as List? ?? [];
+        conversationData['messages'] = messages;
+      } else {
+        // Response is already in the correct format
+        conversationData = responseMap;
+      }
+
+      print(
+          '🔄 [ChatService.getConversation] Parsing conversation data: $conversationData');
+
+      final conversation = Conversation.fromJson(conversationData);
+      print('✅ [ChatService.getConversation] Conversation parsed successfully');
+      print(
+          '🆔 [ChatService.getConversation] Conversation ID: ${conversation.id}');
+      print(
+          '💬 [ChatService.getConversation] Message count: ${conversation.messages.length}');
+
+      return conversation;
+    } catch (e, stackTrace) {
+      print('❌ [ChatService.getConversation] Error: $e');
+      print('📚 [ChatService.getConversation] Stack trace: $stackTrace');
       throw ApiException('Failed to load conversation: ${e.toString()}', null);
     }
   }
@@ -114,17 +153,54 @@ class ChatService {
   /// Get all conversations for the current user
   Future<List<Conversation>> getConversations() async {
     try {
+      print('🔍 [ChatService.getConversations] Fetching conversations list');
+      print(
+          '📍 [ChatService.getConversations] Endpoint: ${AppConfig.conversationsEndpoint}');
+
       final response = await _apiService.get(AppConfig.conversationsEndpoint);
 
+      print('📥 [ChatService.getConversations] Response received');
+      print(
+          '📦 [ChatService.getConversations] Response type: ${response.runtimeType}');
+      print('📄 [ChatService.getConversations] Response data: $response');
+
       if (response == null) {
+        print(
+            '⚠️ [ChatService.getConversations] Response is null, returning empty list');
         return [];
       }
 
-      final conversationsList = response as List;
-      return conversationsList
-          .map((json) => Conversation.fromJson(json as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
+      final responseMap = response as Map<String, dynamic>;
+      final conversationsList = responseMap['conversations'] as List;
+      print(
+          '📊 [ChatService.getConversations] Conversations count: ${conversationsList.length}');
+
+      final conversations = conversationsList.map((json) {
+        print('🔄 [ChatService.getConversations] Parsing conversation: $json');
+        final conversationMap = json as Map<String, dynamic>;
+        
+        // Transform API response to match Conversation model
+        // API returns: {id, title, lastMessage, lastMessageTime, messageCount, createdAt, updatedAt}
+        // Pass all fields including optional ones for list display
+        return Conversation.fromJson({
+          'id': conversationMap['id'],
+          'userId': '', // Not provided in list response
+          'messages': [], // Messages not included in list response
+          'createdAt': conversationMap['createdAt'],
+          'updatedAt': conversationMap['updatedAt'],
+          'title': conversationMap['title'],
+          'lastMessage': conversationMap['lastMessage'],
+          'lastMessageTime': conversationMap['lastMessageTime'],
+          'messageCount': conversationMap['messageCount'],
+        });
+      }).toList();
+
+      print(
+          '✅ [ChatService.getConversations] Successfully parsed ${conversations.length} conversations');
+      return conversations;
+    } catch (e, stackTrace) {
+      print('❌ [ChatService.getConversations] Error: $e');
+      print('📚 [ChatService.getConversations] Stack trace: $stackTrace');
       throw ApiException('Failed to load conversations: ${e.toString()}', null);
     }
   }
@@ -132,17 +208,49 @@ class ChatService {
   /// Create a new conversation
   Future<Conversation> createConversation() async {
     try {
+      print('🔍 [ChatService.createConversation] Creating new conversation');
+      print(
+          '📍 [ChatService.createConversation] Endpoint: ${AppConfig.conversationEndpoint}');
+      print('📦 [ChatService.createConversation] Request body: {}');
+
       final response = await _apiService.post(
         AppConfig.conversationEndpoint,
         {},
       );
 
+      print('📥 [ChatService.createConversation] Response received');
+      print(
+          '📦 [ChatService.createConversation] Response type: ${response.runtimeType}');
+      print('📄 [ChatService.createConversation] Response data: $response');
+
       if (response == null) {
+        print('❌ [ChatService.createConversation] Response is null');
         throw ApiException('No conversation data received', null);
       }
 
-      return Conversation.fromJson(response as Map<String, dynamic>);
-    } catch (e) {
+      final responseMap = response as Map<String, dynamic>;
+
+      // Extract conversation data from nested structure
+      final conversationData =
+          responseMap['conversation'] as Map<String, dynamic>;
+      final messages = responseMap['messages'] as List? ?? [];
+
+      // Add messages to conversation data
+      conversationData['messages'] = messages;
+
+      print(
+          '🔄 [ChatService.createConversation] Parsing conversation data: $conversationData');
+
+      final conversation = Conversation.fromJson(conversationData);
+      print(
+          '✅ [ChatService.createConversation] Conversation created successfully');
+      print(
+          '🆔 [ChatService.createConversation] Conversation ID: ${conversation.id}');
+
+      return conversation;
+    } catch (e, stackTrace) {
+      print('❌ [ChatService.createConversation] Error: $e');
+      print('📚 [ChatService.createConversation] Stack trace: $stackTrace');
       throw ApiException(
           'Failed to create conversation: ${e.toString()}', null);
     }

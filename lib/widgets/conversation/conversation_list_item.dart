@@ -20,6 +20,11 @@ class ConversationListItem extends StatelessWidget {
 
   /// Generate conversation title from first message or use default
   String get _title {
+    // Use title from API if available
+    if (conversation.title != null && conversation.title!.isNotEmpty) {
+      return conversation.title!;
+    }
+    
     if (conversation.messages.isEmpty) {
       return 'New Conversation';
     }
@@ -33,6 +38,16 @@ class ConversationListItem extends StatelessWidget {
 
   /// Get last message preview (truncated to 2 lines worth of text)
   String get _lastMessagePreview {
+    // Use lastMessage from API if available
+    if (conversation.lastMessage != null && conversation.lastMessage!.isNotEmpty) {
+      final lastMsg = conversation.lastMessage!;
+      // Approximate 2 lines as ~60 characters
+      if (lastMsg.length > 60) {
+        return '${lastMsg.substring(0, 60)}...';
+      }
+      return lastMsg;
+    }
+    
     if (conversation.messages.isEmpty) {
       return 'No messages yet';
     }
@@ -47,13 +62,16 @@ class ConversationListItem extends StatelessWidget {
 
   /// Get relative timestamp (e.g., "2h ago", "Yesterday", "2d ago")
   String get _timestamp {
-    if (conversation.messages.isEmpty) {
+    // Use lastMessageTime from API if available
+    final timeToUse = conversation.lastMessageTime ?? 
+        (conversation.messages.isNotEmpty ? conversation.messages.last.createdAt : null);
+    
+    if (timeToUse == null) {
       return '';
     }
 
-    final lastMessage = conversation.messages.last;
     final now = DateTime.now();
-    final diff = now.difference(lastMessage.createdAt);
+    final diff = now.difference(timeToUse);
 
     if (diff.inMinutes < 60) {
       return '${diff.inMinutes}m ago';
@@ -64,7 +82,7 @@ class ConversationListItem extends StatelessWidget {
     } else if (diff.inDays < 7) {
       return '${diff.inDays}d ago';
     } else {
-      return DateFormat('MMM d').format(lastMessage.createdAt);
+      return DateFormat('MMM d').format(timeToUse);
     }
   }
 

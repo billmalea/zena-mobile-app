@@ -35,6 +35,11 @@ class ApiService {
       final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
       final headers = await _getHeaders();
 
+      print('🚀 [ApiService.post] Making POST request');
+      print('📍 [ApiService.post] URL: $url');
+      print('📋 [ApiService.post] Headers: $headers');
+      print('📦 [ApiService.post] Body: ${jsonEncode(body)}');
+
       final response = await _client
           .post(
             url,
@@ -43,8 +48,15 @@ class ApiService {
           )
           .timeout(const Duration(seconds: AppConfig.requestTimeout));
 
+      print('📥 [ApiService.post] Response received');
+      print('📊 [ApiService.post] Status code: ${response.statusCode}');
+      print('📋 [ApiService.post] Response headers: ${response.headers}');
+      print('📄 [ApiService.post] Response body: ${response.body}');
+
       return _handleResponse(response);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [ApiService.post] Error: $e');
+      print('📚 [ApiService.post] Stack trace: $stackTrace');
       throw _handleError(e);
     }
   }
@@ -55,12 +67,23 @@ class ApiService {
       final url = Uri.parse('${AppConfig.apiUrl}$endpoint');
       final headers = await _getHeaders();
 
+      print('🚀 [ApiService.get] Making GET request');
+      print('📍 [ApiService.get] URL: $url');
+      print('📋 [ApiService.get] Headers: $headers');
+
       final response = await _client
           .get(url, headers: headers)
           .timeout(const Duration(seconds: AppConfig.requestTimeout));
 
+      print('📥 [ApiService.get] Response received');
+      print('📊 [ApiService.get] Status code: ${response.statusCode}');
+      print('📋 [ApiService.get] Response headers: ${response.headers}');
+      print('📄 [ApiService.get] Response body: ${response.body}');
+
       return _handleResponse(response);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [ApiService.get] Error: $e');
+      print('📚 [ApiService.get] Stack trace: $stackTrace');
       throw _handleError(e);
     }
   }
