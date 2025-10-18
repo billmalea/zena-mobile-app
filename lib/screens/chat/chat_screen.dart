@@ -5,6 +5,7 @@ import '../../providers/chat_provider.dart';
 import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/typing_indicator.dart';
+import '../../widgets/chat/workflow/submission_recovery_dialog.dart';
 
 /// ChatScreen - Main chat interface for interacting with the AI assistant
 /// Displays message history, handles user input, and shows property results
@@ -24,6 +25,54 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    // Check for recovered submission after frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForRecoveredSubmission();
+    });
+  }
+  
+  /// Check if there's a recovered submission and prompt user
+  void _checkForRecoveredSubmission() {
+    final chatProvider = context.read<ChatProvider>();
+    
+    if (chatProvider.hasRecoveredSubmission && 
+        chatProvider.currentSubmissionState != null) {
+      _showRecoveryDialog(chatProvider);
+    }
+  }
+  
+  /// Show recovery dialog to prompt user to continue or cancel submission
+  void _showRecoveryDialog(ChatProvider chatProvider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SubmissionRecoveryDialog(
+        submissionState: chatProvider.currentSubmissionState!,
+        onContinue: () {
+          Navigator.of(context).pop();
+          // Submission is already restored, just dismiss dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Continuing your property submission'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+        onCancel: () {
+          Navigator.of(context).pop();
+          chatProvider.cancelSubmission();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Submission cancelled'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override

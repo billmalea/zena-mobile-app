@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'card_styles.dart';
+import '../../../models/submission_state.dart';
+import '../workflow/stage_progress_indicator.dart';
+import '../workflow/workflow_navigation.dart';
 
 /// PropertySubmissionCard displays the property submission workflow progress.
 ///
@@ -34,22 +37,28 @@ class PropertySubmissionCard extends StatelessWidget {
     this.onSendMessage,
   });
 
-  /// Get stage number (1-5) from stage name
-  int _getStageNumber() {
+  /// Convert string stage to SubmissionStage enum
+  SubmissionStage _getSubmissionStage() {
     switch (stage.toLowerCase()) {
       case 'start':
-        return 1;
+        return SubmissionStage.start;
       case 'video_uploaded':
-        return 2;
+        return SubmissionStage.videoUploaded;
       case 'confirm_data':
-        return 3;
+        return SubmissionStage.confirmData;
       case 'provide_info':
-        return 4;
+        return SubmissionStage.provideInfo;
       case 'final_confirm':
-        return 5;
+        return SubmissionStage.finalConfirm;
       default:
-        return 1;
+        return SubmissionStage.start;
     }
+  }
+
+  /// Get stage number (1-5) from stage name
+  int _getStageNumber() {
+    final submissionStage = _getSubmissionStage();
+    return SubmissionStage.values.indexOf(submissionStage) + 1;
   }
 
   /// Get stage title from stage name
@@ -284,7 +293,7 @@ class PropertySubmissionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final stageNum = _getStageNumber();
+    final submissionStage = _getSubmissionStage();
     final stageTitle = _getStageTitle();
     final stageIcon = _getStageIcon();
 
@@ -298,7 +307,7 @@ class PropertySubmissionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with stage progress
+            // Header with stage icon and title
             Row(
               children: [
                 Container(
@@ -340,51 +349,6 @@ class PropertySubmissionCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Progress indicator
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Step $stageNum of 5',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.7),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${(stageNum / 5 * 100).toInt()}%',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: stageNum / 5,
-                          minHeight: 8,
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
             // Submission ID reference
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -413,62 +377,25 @@ class PropertySubmissionCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Message/Instructions
-            if (message.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: colorScheme.primary.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
+            // Stage Progress Indicator
+            StageProgressIndicator(
+              currentStage: submissionStage,
+            ),
+            const SizedBox(height: 16),
+
+            // Workflow Navigation
+            WorkflowNavigation(
+              currentStage: submissionStage,
+              onBack: _shouldShowBackButton()
+                  ? () => onSendMessage?.call('Go back to previous step')
+                  : null,
+              onCancel: () => onSendMessage?.call('Cancel submission'),
+              helpText: message.isNotEmpty ? message : null,
+            ),
+            const SizedBox(height: 16),
 
             // Stage-specific action buttons
             ..._getStageActions(context, theme),
-
-            // Back button if applicable
-            if (_shouldShowBackButton()) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
-                  onPressed: () {
-                    onSendMessage?.call('Go back to previous step');
-                  },
-                  icon: const Icon(Icons.arrow_back, size: 18),
-                  label: const Text('Back'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    foregroundColor: colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),

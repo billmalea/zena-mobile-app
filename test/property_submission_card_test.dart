@@ -11,14 +11,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB123',
-              stage: 'start',
-              message: 'Upload a video of your property to get started.',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB123',
+                stage: 'start',
+                message: 'Upload a video of your property to get started.',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
@@ -30,19 +32,21 @@ void main() {
       // Verify submission ID
       expect(find.text('ID: SUB123'), findsOneWidget);
 
-      // Verify message
+      // Verify message in WorkflowNavigation
       expect(
           find.text('Upload a video of your property to get started.'),
           findsOneWidget);
 
-      // Verify progress indicator shows 1/5
-      expect(find.text('Step 1 of 5'), findsOneWidget);
-      expect(find.text('20%'), findsOneWidget);
+      // Verify StageProgressIndicator shows Stage 1/5
+      expect(find.text('Stage 1/5'), findsOneWidget);
+      expect(find.text('Submission Progress'), findsOneWidget);
 
       // Verify upload button exists
       expect(find.text('Upload Video'), findsOneWidget);
 
-      // Tap upload button
+      // Scroll to and tap upload button
+      await tester.ensureVisible(find.text('Upload Video'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Upload Video'));
       await tester.pumpAndSettle();
 
@@ -56,10 +60,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB456',
-              stage: 'video_uploaded',
-              message: 'We are analyzing your video...',
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB456',
+                stage: 'video_uploaded',
+                message: 'We are analyzing your video...',
+              ),
             ),
           ),
         ),
@@ -68,9 +74,11 @@ void main() {
       // Verify stage title
       expect(find.text('Analyzing Video'), findsOneWidget);
 
-      // Verify progress indicator shows 2/5
-      expect(find.text('Step 2 of 5'), findsOneWidget);
-      expect(find.text('40%'), findsOneWidget);
+      // Verify StageProgressIndicator shows Stage 2/5
+      expect(find.text('Stage 2/5'), findsOneWidget);
+
+      // Verify message in WorkflowNavigation
+      expect(find.text('We are analyzing your video...'), findsOneWidget);
 
       // Verify loading indicator
       expect(find.text('Analyzing your video...'), findsOneWidget);
@@ -85,14 +93,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB789',
-              stage: 'confirm_data',
-              message: 'Please review the extracted property data.',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB789',
+                stage: 'confirm_data',
+                message: 'Please review the extracted property data.',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
@@ -101,18 +111,19 @@ void main() {
       // Verify stage title
       expect(find.text('Review Property Data'), findsOneWidget);
 
-      // Verify progress indicator shows 3/5
-      expect(find.text('Step 3 of 5'), findsOneWidget);
-      expect(find.text('60%'), findsOneWidget);
+      // Verify StageProgressIndicator shows Stage 3/5
+      expect(find.text('Stage 3/5'), findsOneWidget);
 
       // Verify action buttons
       expect(find.text('Edit Data'), findsOneWidget);
       expect(find.text('Confirm'), findsOneWidget);
 
-      // Verify back button exists
-      expect(find.text('Back'), findsOneWidget);
+      // Verify back button exists in WorkflowNavigation
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
 
-      // Tap confirm button
+      // Scroll to and tap confirm button
+      await tester.ensureVisible(find.text('Confirm'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm'));
       await tester.pumpAndSettle();
 
@@ -129,14 +140,16 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB101',
-              stage: 'provide_info',
-              message: 'Please provide the missing information.',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB101',
+                stage: 'provide_info',
+                message: 'Please provide the missing information.',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
@@ -145,17 +158,18 @@ void main() {
       // Verify stage title
       expect(find.text('Complete Missing Information'), findsOneWidget);
 
-      // Verify progress indicator shows 4/5
-      expect(find.text('Step 4 of 5'), findsOneWidget);
-      expect(find.text('80%'), findsOneWidget);
+      // Verify StageProgressIndicator shows Stage 4/5
+      expect(find.text('Stage 4/5'), findsOneWidget);
 
       // Verify submit button
       expect(find.text('Submit Information'), findsOneWidget);
 
-      // Verify back button exists
-      expect(find.text('Back'), findsOneWidget);
+      // Verify back button exists in WorkflowNavigation
+      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
 
-      // Tap submit button
+      // Scroll to and tap submit button
+      await tester.ensureVisible(find.text('Submit Information'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Submit Information'));
       await tester.pumpAndSettle();
 
@@ -172,34 +186,37 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB202',
-              stage: 'final_confirm',
-              message: 'Review your property listing before confirming.',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB202',
+                stage: 'final_confirm',
+                message: 'Review your property listing before confirming.',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
       );
 
-      // Verify stage title
-      expect(find.text('Final Review'), findsOneWidget);
+      // Verify stage title (appears in multiple places)
+      expect(find.text('Final Review'), findsWidgets);
 
-      // Verify progress indicator shows 5/5
-      expect(find.text('Step 5 of 5'), findsOneWidget);
-      expect(find.text('100%'), findsOneWidget);
+      // Verify StageProgressIndicator shows Stage 5/5
+      expect(find.text('Stage 5/5'), findsOneWidget);
 
       // Verify action buttons
       expect(find.text('Edit'), findsOneWidget);
       expect(find.text('Confirm & List'), findsOneWidget);
 
-      // Verify no back button at final stage
-      expect(find.text('Back'), findsNothing);
+      // Verify back button does NOT exist at final stage
+      expect(find.byIcon(Icons.arrow_back), findsNothing);
 
-      // Tap confirm button
+      // Scroll to and tap confirm button
+      await tester.ensureVisible(find.text('Confirm & List'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm & List'));
       await tester.pumpAndSettle();
 
@@ -213,10 +230,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB303',
-              stage: 'unknown_stage',
-              message: 'Processing...',
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB303',
+                stage: 'unknown_stage',
+                message: 'Processing...',
+              ),
             ),
           ),
         ),
@@ -224,7 +243,7 @@ void main() {
 
       // Should default to stage 1
       expect(find.text('Property Submission'), findsWidgets);
-      expect(find.text('Step 1 of 5'), findsOneWidget);
+      expect(find.text('Stage 1/5'), findsOneWidget);
       expect(find.text('ID: SUB303'), findsOneWidget);
     });
 
@@ -242,10 +261,12 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: PropertySubmissionCard(
-                submissionId: 'SUB404',
-                stage: stage,
-                message: 'Test message',
+              body: SingleChildScrollView(
+                child: PropertySubmissionCard(
+                  submissionId: 'SUB404',
+                  stage: stage,
+                  message: 'Test message',
+                ),
               ),
             ),
           ),
@@ -267,26 +288,60 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB505',
-              stage: 'confirm_data',
-              message: 'Review data',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB505',
+                stage: 'confirm_data',
+                message: 'Review data',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
       );
 
       // Tap back button
-      await tester.tap(find.text('Back'));
+      await tester.tap(find.byIcon(Icons.arrow_back));
       await tester.pumpAndSettle();
 
       // Verify callback was called
       expect(messageSent, true);
       expect(sentMessage, 'Go back to previous step');
+    });
+
+    testWidgets('cancel button triggers correct callback',
+        (WidgetTester tester) async {
+      bool messageSent = false;
+      String? sentMessage;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB606',
+                stage: 'confirm_data',
+                message: 'Review data',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Tap cancel button
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Verify callback was called
+      expect(messageSent, true);
+      expect(sentMessage, 'Cancel submission');
     });
 
     testWidgets('edit button in confirm_data stage triggers correct callback',
@@ -297,20 +352,24 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB606',
-              stage: 'confirm_data',
-              message: 'Review data',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB707',
+                stage: 'confirm_data',
+                message: 'Review data',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
       );
 
-      // Tap edit button
+      // Scroll to and tap edit button
+      await tester.ensureVisible(find.text('Edit Data'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Edit Data'));
       await tester.pumpAndSettle();
 
@@ -327,20 +386,24 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB707',
-              stage: 'final_confirm',
-              message: 'Final review',
-              onSendMessage: (msg) {
-                messageSent = true;
-                sentMessage = msg;
-              },
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB808',
+                stage: 'final_confirm',
+                message: 'Final review',
+                onSendMessage: (msg) {
+                  messageSent = true;
+                  sentMessage = msg;
+                },
+              ),
             ),
           ),
         ),
       );
 
-      // Tap edit button
+      // Scroll to and tap edit button
+      await tester.ensureVisible(find.text('Edit'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
 
@@ -354,10 +417,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB808',
-              stage: 'start',
-              message: 'Upload video',
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB909',
+                stage: 'start',
+                message: 'Upload video',
+              ),
             ),
           ),
         ),
@@ -367,7 +432,9 @@ void main() {
       expect(find.text('Upload Property Video'), findsOneWidget);
       expect(find.text('Upload Video'), findsOneWidget);
 
-      // Tapping button should not cause errors
+      // Scroll to and tap button (should not cause errors)
+      await tester.ensureVisible(find.text('Upload Video'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Upload Video'));
       await tester.pumpAndSettle();
     });
@@ -377,54 +444,77 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PropertySubmissionCard(
-              submissionId: 'SUB909',
-              stage: 'start',
-              message: '',
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB1010',
+                stage: 'start',
+                message: '',
+              ),
             ),
           ),
         ),
       );
 
-      // Should render without the message container
+      // Should render without the message in WorkflowNavigation
       expect(find.text('Upload Property Video'), findsOneWidget);
-      expect(find.byIcon(Icons.info_outline), findsNothing);
+      // Default help text should be shown instead
+      expect(
+          find.text(
+              'Upload a video of your property to get started. Make sure to show all rooms and features.'),
+          findsOneWidget);
     });
 
-    testWidgets('progress bar shows correct percentage',
+    testWidgets('StageProgressIndicator shows correct stage',
         (WidgetTester tester) async {
       final stages = [
-        ('start', 0.2),
-        ('video_uploaded', 0.4),
-        ('confirm_data', 0.6),
-        ('provide_info', 0.8),
-        ('final_confirm', 1.0),
+        ('start', 'Stage 1/5'),
+        ('video_uploaded', 'Stage 2/5'),
+        ('confirm_data', 'Stage 3/5'),
+        ('provide_info', 'Stage 4/5'),
+        ('final_confirm', 'Stage 5/5'),
       ];
 
-      for (final (stage, expectedValue) in stages) {
+      for (final (stage, expectedText) in stages) {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: PropertySubmissionCard(
-                submissionId: 'SUB1010',
-                stage: stage,
-                message: 'Test',
+              body: SingleChildScrollView(
+                child: PropertySubmissionCard(
+                  submissionId: 'SUB1111',
+                  stage: stage,
+                  message: 'Test',
+                ),
               ),
             ),
           ),
         );
 
-        // Find the LinearProgressIndicator
-        final progressIndicator = tester.widget<LinearProgressIndicator>(
-          find.byType(LinearProgressIndicator),
-        );
-
-        // Verify progress value
-        expect(progressIndicator.value, expectedValue);
+        // Verify stage text
+        expect(find.text(expectedText), findsOneWidget);
 
         // Clean up for next iteration
         await tester.pumpWidget(Container());
       }
+    });
+
+    testWidgets('WorkflowNavigation shows correct status badge',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PropertySubmissionCard(
+                submissionId: 'SUB1212',
+                stage: 'confirm_data',
+                message: 'Test',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Verify status badge text appears (may appear multiple times in different components)
+      expect(find.text('Confirm Data'), findsWidgets);
     });
   });
 }

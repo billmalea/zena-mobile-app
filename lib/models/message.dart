@@ -6,6 +6,7 @@ class Message {
   final String content;
   final List<ToolResult>? toolResults;
   final DateTime createdAt;
+  final Map<String, dynamic>? metadata;
 
   Message({
     required this.id,
@@ -13,6 +14,7 @@ class Message {
     required this.content,
     this.toolResults,
     required this.createdAt,
+    this.metadata,
   });
 
   /// Check if message is from user
@@ -20,6 +22,15 @@ class Message {
 
   /// Check if message has tool results
   bool get hasToolResults => toolResults != null && toolResults!.isNotEmpty;
+
+  /// Get submission ID from metadata
+  String? get submissionId => metadata?['submissionId'] as String?;
+
+  /// Get workflow stage from metadata
+  String? get workflowStage => metadata?['workflowStage'] as String?;
+
+  /// Check if message is part of a workflow
+  bool get isPartOfWorkflow => submissionId != null;
 
   /// Create Message from JSON
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -33,6 +44,7 @@ class Message {
               .toList()
           : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      metadata: json['metadata'] as Map<String, dynamic>?,
     );
   }
 
@@ -44,6 +56,7 @@ class Message {
       'content': content,
       'toolResults': toolResults?.map((tr) => tr.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
+      'metadata': metadata,
     };
   }
 
@@ -54,6 +67,7 @@ class Message {
     String? content,
     List<ToolResult>? toolResults,
     DateTime? createdAt,
+    Map<String, dynamic>? metadata,
   }) {
     return Message(
       id: id ?? this.id,
@@ -61,6 +75,7 @@ class Message {
       content: content ?? this.content,
       toolResults: toolResults ?? this.toolResults,
       createdAt: createdAt ?? this.createdAt,
+      metadata: metadata ?? this.metadata,
     );
   }
 }
