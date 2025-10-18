@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/message.dart';
 import 'property_card.dart';
 import 'tool_cards/phone_confirmation_card.dart';
+import 'tool_cards/contact_info_card.dart';
 
 /// Central factory widget for routing tool results to appropriate specialized cards
 ///
@@ -129,7 +130,8 @@ class ToolResultWidget extends StatelessWidget {
   Widget _buildPhoneConfirmationCard(BuildContext context) {
     final phoneNumber = toolResult.result['phoneNumber'] as String? ?? '';
     final message = toolResult.result['message'] as String? ?? '';
-    final property = toolResult.result['property'] as Map<String, dynamic>? ?? {};
+    final property =
+        toolResult.result['property'] as Map<String, dynamic>? ?? {};
 
     return PhoneConfirmationCard(
       phoneNumber: phoneNumber,
@@ -145,6 +147,23 @@ class ToolResultWidget extends StatelessWidget {
           onSendMessage!('No, use different number');
         }
       },
+    );
+  }
+
+  /// Build contact info card
+  Widget _buildContactInfoCard(BuildContext context) {
+    final contactInfo =
+        toolResult.result['contactInfo'] as Map<String, dynamic>? ?? {};
+    final paymentInfo =
+        toolResult.result['paymentInfo'] as Map<String, dynamic>?;
+    final message = toolResult.result['message'] as String? ?? '';
+    final alreadyPaid = toolResult.result['alreadyPaid'] as bool? ?? false;
+
+    return ContactInfoCard(
+      contactInfo: contactInfo,
+      paymentInfo: paymentInfo,
+      message: message,
+      alreadyPaid: alreadyPaid,
     );
   }
 
@@ -166,13 +185,7 @@ class ToolResultWidget extends StatelessWidget {
         );
 
       case 'contact_info':
-        // TODO: Implement ContactInfoCard in Task 7
-        return _buildPlaceholderCard(
-          context,
-          icon: Icons.contact_phone,
-          title: 'Contact Information',
-          message: 'Here is the contact information you requested.',
-        );
+        return _buildContactInfoCard(context);
 
       case 'payment_error':
         // TODO: Implement PaymentErrorCard in Task 8

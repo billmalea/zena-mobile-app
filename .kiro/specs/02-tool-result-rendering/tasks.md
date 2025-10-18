@@ -92,14 +92,18 @@
   - Test with various phone formats
   - _Requirements: 3.1_
 
-- [ ] 7. Create Contact Info Card
+- [x] 7. Create Contact Info Card
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/contact_info_card.dart`
   - Display success message with checkmark icon
   - Show property title and details
   - Display agent/owner name and phone number
   - Add "Call" button that opens phone dialer using url_launcher
   - Add "WhatsApp" button that opens WhatsApp using url_launcher
-  - Display email if available
   - Show payment receipt information
   - Add video link button if available
   - Test call and WhatsApp buttons on real device
