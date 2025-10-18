@@ -108,9 +108,11 @@ class PaymentErrorCard extends StatelessWidget {
 
     // Extract property details
     final propertyTitle = property['title'] as String? ?? 'Property';
-    final commission = property['commission'] as num? ?? 
-                       paymentInfo?['amount'] as num? ?? 
-                       0;
+    // Handle both commission_amount and commission field names
+    final commission = (property['commission_amount'] ?? 
+                       property['commission'] ?? 
+                       paymentInfo?['amount'] ?? 
+                       0) as num;
     final formattedCommission = 'KES ${commission.toStringAsFixed(0)}';
 
     return Card(

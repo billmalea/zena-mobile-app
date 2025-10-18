@@ -120,7 +120,8 @@ class _PhoneInputCardState extends State<PhoneInputCard> {
 
     // Extract property details
     final propertyTitle = widget.property['title'] as String? ?? 'Property';
-    final commission = widget.property['commission'] as num? ?? 0;
+    // Handle both commission_amount and commission field names
+    final commission = (widget.property['commission_amount'] ?? widget.property['commission'] ?? 0) as num;
     final formattedCommission = 'KES ${commission.toStringAsFixed(0)}';
 
     return Card(

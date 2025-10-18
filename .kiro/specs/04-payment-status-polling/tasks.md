@@ -2,7 +2,12 @@
 
 **Note:** This spec has been simplified based on backend implementation review. The backend handles ALL payment polling internally - mobile only needs to display UI cards based on tool results.
 
-- [ ] 1. Create Phone Confirmation Card
+- [x] 1. Create Phone Confirmation Card
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/phone_confirmation_card.dart`
   - Display property title and commission amount from tool result
   - Show phone number from userPhoneFromProfile field
@@ -14,7 +19,9 @@
   - Test with sample tool result data
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 2. Create Phone Input Card
+- [x] 2. Create Phone Input Card
+
+
   - Create `lib/widgets/chat/tool_cards/phone_input_card.dart`
   - Add TextField for phone number input with phone keyboard type
   - Implement Kenyan phone format validation using RegExp (+254... or 07... or 01...)
@@ -25,14 +32,15 @@
   - Test with various phone formats (valid and invalid)
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 3. Create Contact Info Card
+
+- [x] 3. Create Contact Info Card
+
   - Create `lib/widgets/chat/tool_cards/contact_info_card.dart`
   - Display success message with checkmark icon
   - Show property title and location from contactInfo
   - Display agent/owner name and phone number
   - Add "Call" button that opens phone dialer using url_launcher
   - Add "WhatsApp" button that opens WhatsApp using url_launcher
-  - Display email if available
   - Show payment receipt information (amount, receipt number)
   - Add video link button if videoUrl is available
   - Handle alreadyPaid flag to adjust messaging
@@ -40,7 +48,9 @@
   - Test WhatsApp button opens WhatsApp on real device
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 4. Create Payment Error Card
+- [x] 4. Create Payment Error Card
+
+
   - Create `lib/widgets/chat/tool_cards/payment_error_card.dart`
   - Display error icon based on errorType (cancel, timeout, failed, processing error)
   - Show user-friendly error message from tool result
@@ -52,7 +62,10 @@
   - Test with all error types (PAYMENT_CANCELLED, PAYMENT_TIMEOUT, PAYMENT_FAILED, PAYMENT_PROCESSING_ERROR)
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
 
-- [ ] 5. Update Tool Result Factory for Contact Info Flow
+- [x] 5. Update Tool Result Factory for Contact Info Flow
+
+
+
   - Update `lib/widgets/chat/tool_result_widget.dart` to add requestContactInfo case
   - Implement _buildContactInfoResult() method to route based on tool result flags
   - Route to PhoneConfirmationCard when needsPhoneConfirmation is true
@@ -63,7 +76,10 @@
   - Test routing for all 4 scenarios
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 6. Configure Platform Permissions for URL Launcher
+- [x] 6. Configure Platform Permissions for URL Launcher
+
+
+
   - Verify `android/app/src/main/AndroidManifest.xml` has queries for tel and https intents
   - Verify `ios/Runner/Info.plist` has LSApplicationQueriesSchemes for tel and whatsapp
   - Test call button on Android device
@@ -72,7 +88,12 @@
   - Test WhatsApp button on iOS device
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 7. End-to-End Testing with Real M-Pesa
+- [x] 7. End-to-End Testing with Real M-Pesa
+
+
+
+
+
   - Test complete flow: Request contact info → Phone confirmation → Payment → Contact info display
   - Test phone confirmation with "Yes" button
   - Test phone confirmation with "No" button and provide different number

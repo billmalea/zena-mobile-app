@@ -133,5 +133,30 @@ void main() {
       // Verify header text
       expect(find.text('Confirm Phone Number'), findsOneWidget);
     });
+
+    testWidgets('handles commission_amount field name',
+        (WidgetTester tester) async {
+      // Test with commission_amount (snake_case) as per design spec
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PhoneConfirmationCard(
+              phoneNumber: '+254712345678',
+              message: 'Test message',
+              property: {
+                'title': '3BR House in Karen',
+                'commission_amount': 5000
+              },
+              onConfirm: () {},
+              onDecline: () {},
+            ),
+          ),
+        ),
+      );
+
+      // Verify commission_amount is displayed correctly
+      expect(find.text('3BR House in Karen'), findsOneWidget);
+      expect(find.textContaining('KES 5000'), findsOneWidget);
+    });
   });
 }

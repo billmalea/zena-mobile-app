@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/message.dart';
 import 'property_card.dart';
 import 'tool_cards/phone_confirmation_card.dart';
+import 'tool_cards/phone_input_card.dart';
 import 'tool_cards/contact_info_card.dart';
 import 'tool_cards/payment_error_card.dart';
 import 'tool_cards/property_submission_card.dart';
@@ -135,7 +136,9 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build phone confirmation card
   Widget _buildPhoneConfirmationCard(BuildContext context) {
-    final phoneNumber = toolResult.result['phoneNumber'] as String? ?? '';
+    final phoneNumber = toolResult.result['userPhoneFromProfile'] as String? ?? 
+                        toolResult.result['phoneNumber'] as String? ?? 
+                        '';
     final message = toolResult.result['message'] as String? ?? '';
     final property =
         toolResult.result['property'] as Map<String, dynamic>? ?? {};
@@ -146,12 +149,29 @@ class ToolResultWidget extends StatelessWidget {
       property: property,
       onConfirm: () {
         if (onSendMessage != null) {
-          onSendMessage!('Yes, use this number');
+          onSendMessage!('Yes, please use $phoneNumber for the payment');
         }
       },
       onDecline: () {
         if (onSendMessage != null) {
-          onSendMessage!('No, use different number');
+          onSendMessage!('No, I\'ll provide a different phone number');
+        }
+      },
+    );
+  }
+
+  /// Build phone input card
+  Widget _buildPhoneInputCard(BuildContext context) {
+    final message = toolResult.result['message'] as String? ?? '';
+    final property =
+        toolResult.result['property'] as Map<String, dynamic>? ?? {};
+
+    return PhoneInputCard(
+      message: message,
+      property: property,
+      onSubmit: (phone) {
+        if (onSendMessage != null) {
+          onSendMessage!('My phone number is $phone');
         }
       },
     );
@@ -198,30 +218,32 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build contact info result (payment flow)
   Widget _buildContactInfoResult(BuildContext context) {
-    final stage = toolResult.result['stage'] as String?;
-
-    switch (stage) {
-      case 'phone_confirmation':
-        return _buildPhoneConfirmationCard(context);
-
-      case 'phone_input':
-        // TODO: Implement PhoneInputCard in Task 6
-        return _buildPlaceholderCard(
-          context,
-          icon: Icons.phone_android,
-          title: 'Enter Phone Number',
-          message: 'Please provide your phone number.',
-        );
-
-      case 'contact_info':
-        return _buildContactInfoCard(context);
-
-      case 'payment_error':
-        return _buildPaymentErrorCard(context);
-
-      default:
-        return _buildUnknownToolResult(context);
+    // Route based on flags in the tool result
+    
+    // Phone confirmation needed
+    if (toolResult.result['needsPhoneConfirmation'] == true) {
+      return _buildPhoneConfirmationCard(context);
     }
+    
+    // Phone number needed
+    if (toolResult.result['needsPhoneNumber'] == true) {
+      return _buildPhoneInputCard(context);
+    }
+    
+    // Success - show contact info
+    if (toolResult.result['success'] == true && 
+        toolResult.result['contactInfo'] != null) {
+      return _buildContactInfoCard(context);
+    }
+    
+    // Error - show error card
+    if (toolResult.result['success'] == false && 
+        toolResult.result['error'] != null) {
+      return _buildPaymentErrorCard(context);
+    }
+    
+    // Fallback for unknown state
+    return _buildUnknownToolResult(context);
   }
 
   /// Build property submission result
