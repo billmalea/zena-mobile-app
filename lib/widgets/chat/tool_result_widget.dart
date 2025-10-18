@@ -3,6 +3,8 @@ import '../../models/message.dart';
 import 'property_card.dart';
 import 'tool_cards/phone_confirmation_card.dart';
 import 'tool_cards/contact_info_card.dart';
+import 'tool_cards/payment_error_card.dart';
+import 'tool_cards/property_submission_card.dart';
 
 /// Central factory widget for routing tool results to appropriate specialized cards
 ///
@@ -167,6 +169,28 @@ class ToolResultWidget extends StatelessWidget {
     );
   }
 
+  /// Build payment error card
+  Widget _buildPaymentErrorCard(BuildContext context) {
+    final error = toolResult.result['error'] as String? ?? '';
+    final errorType = toolResult.result['errorType'] as String?;
+    final property =
+        toolResult.result['property'] as Map<String, dynamic>? ?? {};
+    final paymentInfo =
+        toolResult.result['paymentInfo'] as Map<String, dynamic>?;
+
+    return PaymentErrorCard(
+      error: error,
+      errorType: errorType,
+      property: property,
+      paymentInfo: paymentInfo,
+      onRetry: () {
+        if (onSendMessage != null) {
+          onSendMessage!('Try again');
+        }
+      },
+    );
+  }
+
   /// Build contact info result (payment flow)
   Widget _buildContactInfoResult(BuildContext context) {
     final stage = toolResult.result['stage'] as String?;
@@ -188,15 +212,7 @@ class ToolResultWidget extends StatelessWidget {
         return _buildContactInfoCard(context);
 
       case 'payment_error':
-        // TODO: Implement PaymentErrorCard in Task 8
-        return _buildPlaceholderCard(
-          context,
-          icon: Icons.error_outline,
-          title: 'Payment Error',
-          message: toolResult.result['error'] as String? ??
-              'Payment failed. Please try again.',
-          isError: true,
-        );
+        return _buildPaymentErrorCard(context);
 
       default:
         return _buildUnknownToolResult(context);
@@ -205,25 +221,20 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build property submission result
   Widget _buildPropertySubmissionResult(BuildContext context) {
-    final stage = toolResult.result['stage'] as String?;
+    final stage = toolResult.result['stage'] as String? ?? 'start';
+    final submissionId = toolResult.result['submissionId'] as String? ?? 
+                         toolResult.result['id'] as String? ?? 
+                         'unknown';
+    final message = toolResult.result['message'] as String? ?? '';
+    final data = toolResult.result['data'] as Map<String, dynamic>?;
 
-    switch (stage) {
-      case 'start':
-      case 'video_uploaded':
-      case 'confirm_data':
-      case 'provide_info':
-      case 'final_confirm':
-        // TODO: Implement PropertySubmissionCard in Task 9
-        return _buildPlaceholderCard(
-          context,
-          icon: Icons.upload_file,
-          title: 'Property Submission',
-          message: 'Stage: ${stage ?? "unknown"}',
-        );
-
-      default:
-        return _buildUnknownToolResult(context);
-    }
+    return PropertySubmissionCard(
+      submissionId: submissionId,
+      stage: stage,
+      message: message,
+      data: data,
+      onSendMessage: onSendMessage,
+    );
   }
 
   /// Build property hunting result

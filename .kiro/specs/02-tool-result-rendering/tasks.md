@@ -109,7 +109,12 @@
   - Test call and WhatsApp buttons on real device
   - _Requirements: 3.3_
 
-- [ ] 8. Create Payment Error Card
+- [x] 8. Create Payment Error Card
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/payment_error_card.dart`
   - Display error icon based on error type (cancelled, timeout, failed)
   - Show user-friendly error message
@@ -119,8 +124,15 @@
   - Use appropriate colors for different error types
   - Test with various error scenarios
   - _Requirements: 3.4_
+-
 
-- [ ] 9. Create Property Submission Card
+- [x] 9. Create Property Submission Card
+
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/property_submission_card.dart`
   - Display stage progress indicator (1/5, 2/5, etc.)
   - Show current stage title and instructions
@@ -131,7 +143,16 @@
   - Test stage transitions
   - _Requirements: 4.1, 4.2_
 
-- [ ] 10. Create Property Data Card
+- [x] 10. Create Property Data Card
+
+
+
+
+
+
+
+
+
   - Create `lib/widgets/chat/tool_cards/property_data_card.dart`
   - Display extracted property data in organized sections (Basic, Financial, Location, Details)
   - Add edit button for each field
