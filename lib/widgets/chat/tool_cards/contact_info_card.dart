@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'card_styles.dart';
 
 /// ContactInfoCard displays property owner/agent contact details after successful payment.
-///
-/// This card is shown when the user has successfully paid the commission fee
-/// and can now access the property owner's contact information.
-class ContactInfoCard extends StatelessWidget {
-  /// Contact information including name, phone, email, etc.
+/// Matches web implementation exactly with gradient background and copy functionality.
+class ContactInfoCard extends StatefulWidget {
+  /// Contact information including phone, property details
   final Map<String, dynamic> contactInfo;
-
-  /// Payment information including receipt, amount, etc.
-  final Map<String, dynamic>? paymentInfo;
 
   /// Success message to display
   final String message;
@@ -19,50 +14,46 @@ class ContactInfoCard extends StatelessWidget {
   /// Whether the user has already paid for this property
   final bool alreadyPaid;
 
+  /// Whether payment was confirmed
+  final bool paymentConfirmed;
+
   const ContactInfoCard({
     super.key,
     required this.contactInfo,
-    this.paymentInfo,
     required this.message,
     this.alreadyPaid = false,
+    this.paymentConfirmed = false,
   });
 
-  /// Launch phone dialer with the provided phone number
+  @override
+  State<ContactInfoCard> createState() => _ContactInfoCardState();
+}
+
+class _ContactInfoCardState extends State<ContactInfoCard> {
+  String? _copiedField;
+
+  /// Copy text to clipboard
+  Future<void> _copyToClipboard(String text, String field) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    setState(() {
+      _copiedField = field;
+    });
+
+    // Reset after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _copiedField = null;
+        });
+      }
+    });
+  }
+
+  /// Launch phone dialer
   Future<void> _makePhoneCall(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunchUrl(phoneUri)) {
       await launchUrl(phoneUri);
-    }
-  }
-
-  /// Launch WhatsApp with the provided phone number
-  Future<void> _openWhatsApp(String phoneNumber) async {
-    // Remove any non-digit characters and ensure proper format
-    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-    
-    // Ensure number starts with country code
-    if (!cleanNumber.startsWith('+')) {
-      // Assume Kenyan number if no country code
-      if (cleanNumber.startsWith('0')) {
-        cleanNumber = '+254${cleanNumber.substring(1)}';
-      } else if (cleanNumber.startsWith('254')) {
-        cleanNumber = '+$cleanNumber';
-      } else {
-        cleanNumber = '+254$cleanNumber';
-      }
-    }
-
-    final Uri whatsappUri = Uri.parse('https://wa.me/$cleanNumber');
-    if (await canLaunchUrl(whatsappUri)) {
-      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  /// Launch video link in browser
-  Future<void> _openVideoLink(String videoUrl) async {
-    final Uri videoUri = Uri.parse(videoUrl);
-    if (await canLaunchUrl(videoUri)) {
-      await launchUrl(videoUri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -71,77 +62,82 @@ class ContactInfoCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Extract contact details
-    final ownerName = contactInfo['name'] as String? ?? 
-                      contactInfo['ownerName'] as String? ?? 
-                      contactInfo['agentName'] as String? ?? 
-                      'Property Owner';
-    final phoneNumber = contactInfo['phone'] as String? ?? 
-                        contactInfo['phoneNumber'] as String? ?? 
-                        '';
-    final email = contactInfo['email'] as String?;
-    final propertyTitle = contactInfo['propertyTitle'] as String? ?? 
-                          contactInfo['title'] as String? ?? 
-                          'Property';
-    final videoLink = contactInfo['videoLink'] as String? ?? 
-                      contactInfo['video'] as String?;
-
-    // Extract payment details
-    final paymentAmount = paymentInfo?['amount'] as num? ?? 
-                          paymentInfo?['commission'] as num?;
-    final receiptNumber = paymentInfo?['receiptNumber'] as String? ?? 
-                          paymentInfo?['receipt'] as String? ?? 
-                          paymentInfo?['transactionId'] as String?;
+    // Extract contact details - matches web structure
+    final phoneNumber = widget.contactInfo['phone'] as String? ?? '';
+    final propertyTitle =
+        widget.contactInfo['propertyTitle'] as String? ?? 'Property';
+    final propertyLocation =
+        widget.contactInfo['propertyLocation'] as String? ?? '';
+    final rentAmount = widget.contactInfo['rentAmount'] as num? ?? 0;
 
     return Card(
       elevation: 2,
-      margin: CardStyles.cardMargin,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       clipBehavior: Clip.antiAlias,
-      shape: CardStyles.cardShape(context),
-      child: Padding(
-        padding: CardStyles.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Success header with checkmark
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: CardStyles.highlightContainer(
-                context,
-                color: Colors.green,
-                opacity: 0.1,
-              ),
-              child: Row(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.green.shade50.withOpacity(0.5),
+              Colors.green.shade100.withOpacity(0.3),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with checkmark icon
+              Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.check,
+                    child: Icon(
+                      Icons.check_circle,
                       size: 24,
-                      color: Colors.white,
+                      color: Colors.green.shade600,
                     ),
                   ),
-                  const SizedBox(width: CardStyles.elementSpacing),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          alreadyPaid ? 'Contact Info Retrieved' : 'Payment Successful!',
+                          'Contact Information',
                           style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: CardStyles.getDarkerColor(Colors.green, 0.6),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        if (message.isNotEmpty)
-                          Text(
-                            message,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: CardStyles.getDarkerColor(Colors.green, 0.7),
+                        if (widget.paymentConfirmed)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Payment Confirmed',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                       ],
@@ -149,205 +145,166 @@ class ContactInfoCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: CardStyles.sectionSpacing),
 
-            // Property details
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: CardStyles.secondaryContainer(context),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.home_outlined,
-                    size: 20,
-                    color: colorScheme.primary,
-                  ),
-                  const SizedBox(width: CardStyles.smallSpacing),
-                  Expanded(
-                    child: Text(
-                      propertyTitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 16),
+
+              // Message
+              Text(
+                widget.message,
+                style: theme.textTheme.bodyMedium,
               ),
-            ),
-            const SizedBox(height: CardStyles.sectionSpacing),
 
-            // Contact information section
-            CardStyles.sectionHeader(context, 'Contact Information'),
-            const SizedBox(height: CardStyles.elementSpacing),
+              const SizedBox(height: 16),
 
-            // Owner/Agent name
-            Row(
-              children: [
-                Icon(
-                  Icons.person_outline,
-                  size: 20,
-                  color: colorScheme.onSurface.withOpacity(0.6),
-                ),
-                const SizedBox(width: CardStyles.smallSpacing),
-                Expanded(
-                  child: Text(
-                    ownerName,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: CardStyles.elementSpacing),
-
-            // Phone number with action buttons
-            if (phoneNumber.isNotEmpty) ...[
+              // Property details section
               Container(
-                padding: const EdgeInsets.all(12),
-                decoration: CardStyles.primaryContainer(context),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Property title
                     Row(
                       children: [
                         Icon(
-                          Icons.phone,
-                          size: 18,
-                          color: colorScheme.primary,
+                          Icons.location_on,
+                          size: 16,
+                          color: theme.colorScheme.primary,
                         ),
-                        const SizedBox(width: CardStyles.smallSpacing),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            phoneNumber,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: CardStyles.elementSpacing),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _makePhoneCall(phoneNumber),
-                            icon: const Icon(Icons.phone, size: 18),
-                            label: const Text('Call'),
-                            style: CardStyles.primaryButton(context),
-                          ),
-                        ),
-                        const SizedBox(width: CardStyles.smallSpacing),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _openWhatsApp(phoneNumber),
-                            icon: const Icon(Icons.chat, size: 18),
-                            label: const Text('WhatsApp'),
-                            style: CardStyles.successButton(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: CardStyles.elementSpacing),
-            ],
-
-            // Email if available
-            if (email != null && email.isNotEmpty) ...[
-              Row(
-                children: [
-                  Icon(
-                    Icons.email_outlined,
-                    size: 20,
-                    color: colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                  const SizedBox(width: CardStyles.smallSpacing),
-                  Expanded(
-                    child: Text(
-                      email,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: CardStyles.elementSpacing),
-            ],
-
-            // Payment receipt information
-            if (paymentInfo != null && !alreadyPaid) ...[
-              CardStyles.divider(),
-              CardStyles.sectionHeader(context, 'Payment Receipt'),
-              const SizedBox(height: CardStyles.elementSpacing),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: CardStyles.secondaryContainer(context),
-                child: Column(
-                  children: [
-                    if (paymentAmount != null)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Amount Paid:',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                          ),
-                          Text(
-                            'KES ${paymentAmount.toStringAsFixed(0)}',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (receiptNumber != null) ...[
-                      const SizedBox(height: CardStyles.smallSpacing),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Receipt:',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                          ),
-                          Text(
-                            receiptNumber,
-                            style: theme.textTheme.bodyMedium?.copyWith(
+                            propertyTitle,
+                            style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    if (propertyLocation.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        propertyLocation,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.7),
+                        ),
                       ),
                     ],
+                    if (rentAmount > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Rent: KSh ${rentAmount.toStringAsFixed(0)}/month',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    // Phone number with copy button
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.phone,
+                            size: 16,
+                            color: Colors.blue.shade500,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  phoneNumber,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  'Agent Phone Number',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color:
+                                        colorScheme.onSurface.withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                _copyToClipboard(phoneNumber, 'phone'),
+                            icon: Icon(
+                              _copiedField == 'phone'
+                                  ? Icons.check
+                                  : Icons.copy,
+                              size: 16,
+                              color: Colors.blue.shade600,
+                            ),
+                            tooltip:
+                                _copiedField == 'phone' ? 'Copied!' : 'Copy',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Important notice
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: colorScheme.outline.withOpacity(0.2),
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '💡',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                                children: [
+                                  const TextSpan(
+                                    text: 'Important: ',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const TextSpan(
+                                    text:
+                                        'The agent will be contacting you shortly to arrange a viewing. You can also reach them directly at the number above. Do not make any additional finder\'s fee payments outside Zena. If an agent requests this, contact support at 0700200200.',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
-
-            // Video link button if available
-            if (videoLink != null && videoLink.isNotEmpty) ...[
-              const SizedBox(height: CardStyles.sectionSpacing),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openVideoLink(videoLink),
-                  icon: const Icon(Icons.play_circle_outline),
-                  label: const Text('Watch Property Video'),
-                  style: CardStyles.secondaryButton(context),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

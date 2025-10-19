@@ -66,9 +66,20 @@ class AffordabilityCard extends StatelessWidget {
       margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
       shape: CardStyles.cardShape(context),
-      child: Padding(
-        padding: CardStyles.cardPadding,
-        child: Column(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.green.shade50.withOpacity(0.5),
+              Colors.blue.shade50.withOpacity(0.3),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: CardStyles.cardPadding,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
@@ -370,6 +381,7 @@ class AffordabilityCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

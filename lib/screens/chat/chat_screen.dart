@@ -7,7 +7,7 @@ import '../../providers/conversation_provider.dart';
 import '../../widgets/chat/enhanced_empty_state.dart';
 import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/message_input.dart';
-import '../../widgets/chat/typing_indicator.dart';
+import '../../widgets/chat/thinking_indicator.dart';
 import '../../widgets/chat/workflow/submission_recovery_dialog.dart';
 import '../../widgets/conversation/conversation_drawer.dart';
 import '../../widgets/connectivity_indicator.dart';
@@ -256,9 +256,9 @@ class _ChatScreenState extends State<ChatScreen> {
         if (index == chatProvider.messages.length) {
           return const Column(
             children: [
-              Padding(
+              const Padding(
                 padding: EdgeInsets.only(top: 8),
-                child: TypingIndicator(),
+                child: ThinkingIndicator(),
               ),
               SizedBox(height: 8),
               ShimmerMessageBubble(isUser: false),

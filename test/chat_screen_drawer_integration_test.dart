@@ -9,8 +9,6 @@ import 'package:zena_mobile/providers/conversation_provider.dart';
 import 'package:zena_mobile/screens/chat/chat_screen.dart';
 import 'package:zena_mobile/services/chat_service.dart';
 import 'package:zena_mobile/services/submission_state_manager.dart';
-import 'package:zena_mobile/models/conversation.dart';
-import 'package:zena_mobile/models/message.dart';
 
 void main() {
   group('ChatScreen Drawer Integration Tests', () {

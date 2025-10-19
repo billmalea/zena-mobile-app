@@ -34,6 +34,11 @@ class ChatService {
     print('💬 [ChatService] Message: $message');
     print('🆔 [ChatService] Conversation ID: $conversationId');
 
+    // Track which tool results we've already yielded to avoid duplicates
+    final yieldedToolResultIds = <String>{};
+    final yieldedActiveToolCallIds = <String>{};
+    bool conversationIdYielded = false;
+
     try {
       print('🔄 [ChatService] Calling ChatClient...');
       await for (final response in _chatClient.sendMessage(
@@ -42,6 +47,20 @@ class ChatService {
       )) {
         print(
             '📥 [ChatService] Received response: text=${response.text.length} chars, error=${response.error}');
+        
+        // Extract and yield conversation ID from annotations (only once)
+        if (!conversationIdYielded && response.annotations != null) {
+          final responseConversationId = response.annotations!['conversationId'] as String?;
+          if (responseConversationId != null) {
+            print('🆔 [ChatService] Extracted conversation ID from annotations: $responseConversationId');
+            conversationIdYielded = true;
+            yield ChatEvent(
+              type: 'conversation-id',
+              content: responseConversationId,
+            );
+          }
+        }
+        
         // Convert ChatResponse to ChatEvent
         if (response.hasError) {
           print('❌ [ChatService] Error response: ${response.error}');
@@ -58,30 +77,36 @@ class ChatService {
           );
         }
 
-        // Yield tool calls
-        for (final toolCall in response.toolCalls) {
-          yield ChatEvent(
-            type: 'tool-call',
-            toolResult: {
-              'toolName': toolCall.name,
-              'toolCallId': toolCall.id,
-              'args': toolCall.args,
-              'state': toolCall.state,
-            },
-          );
+        // Yield only NEW active tool calls (for loading indicators)
+        for (final toolCall in response.activeToolCalls) {
+          if (!yieldedActiveToolCallIds.contains(toolCall.id)) {
+            yieldedActiveToolCallIds.add(toolCall.id);
+            yield ChatEvent(
+              type: 'tool-call-active',
+              toolResult: {
+                'toolName': toolCall.name,
+                'toolCallId': toolCall.id,
+                'state': toolCall.state,
+              },
+            );
+          }
         }
 
-        // Yield tool results
+        // Yield only NEW tool results (avoid duplicates across messages)
         for (final toolResult in response.toolResults) {
-          yield ChatEvent(
-            type: 'tool-result',
-            toolResult: {
-              'toolName': toolResult.name,
-              'toolCallId': toolResult.id,
-              'result': toolResult.result,
-              'state': toolResult.state,
-            },
-          );
+          final resultId = toolResult.id ?? toolResult.name;
+          if (!yieldedToolResultIds.contains(resultId)) {
+            yieldedToolResultIds.add(resultId);
+            yield ChatEvent(
+              type: 'tool-result',
+              toolResult: {
+                'toolName': toolResult.name,
+                'toolCallId': toolResult.id,
+                'result': toolResult.result,
+                'state': toolResult.state,
+              },
+            );
+          }
         }
       }
       print('🎉 [ChatService] Stream complete');
@@ -259,7 +284,7 @@ class ChatService {
 
 /// Chat event for streaming responses
 class ChatEvent {
-  final String type; // 'text', 'tool-call', 'tool-result', 'error'
+  final String type; // 'text', 'tool-call', 'tool-result', 'error', 'conversation-id'
   final String? content;
   final Map<String, dynamic>? toolResult;
 
@@ -273,4 +298,5 @@ class ChatEvent {
   bool get isToolCall => type == 'tool-call';
   bool get isToolResult => type == 'tool-result';
   bool get isError => type == 'error';
+  bool get isConversationId => type == 'conversation-id';
 }

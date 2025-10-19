@@ -1,319 +1,370 @@
 import 'package:flutter/material.dart';
-import 'card_styles.dart';
 
-/// NoPropertiesFoundCard widget displays a helpful message when no properties match the search
-/// Provides suggestions and action buttons to help users adjust their search
+/// Card displayed when property search returns no results
+/// Offers options to start property hunting or adjust search criteria
 class NoPropertiesFoundCard extends StatelessWidget {
   final Map<String, dynamic> searchCriteria;
-  final Function(String)? onSendMessage;
+  final List<String> suggestions;
+  final VoidCallback? onStartPropertyHunting;
+  final VoidCallback? onAdjustSearch;
 
   const NoPropertiesFoundCard({
     super.key,
     required this.searchCriteria,
-    this.onSendMessage,
+    required this.suggestions,
+    this.onStartPropertyHunting,
+    this.onAdjustSearch,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Card(
       elevation: 2,
-      margin: CardStyles.cardMargin,
-      clipBehavior: Clip.antiAlias,
-      shape: CardStyles.cardShape(context),
-      child: Padding(
-        padding: CardStyles.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon and Title
-            Row(
-              children: [
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.errorContainer.withOpacity(0.3),
+              colorScheme.errorContainer.withOpacity(0.1),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with icon
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.search_off,
+                      size: 24,
+                      color: Colors.orange.shade600,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'No Properties Found',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'We couldn\'t find any properties matching your exact criteria, but we have options to help!',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Search criteria summary
+              if (searchCriteria.isNotEmpty) ...[
+                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer,
-                    shape: BoxShape.circle,
+                    color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.search_off,
-                    size: 32,
-                    color: theme.colorScheme.onErrorContainer,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    'No Properties Found',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Message
-            Text(
-              'We couldn\'t find any properties matching your search criteria.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Search Criteria Used
-            if (searchCriteria.isNotEmpty) ...[
-              Text(
-                'Your search criteria:',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildSearchCriteria(context),
-              const SizedBox(height: 16),
-            ],
-
-            // Suggestions
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: CardStyles.secondaryContainer(context).copyWith(
-                border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.2),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.lightbulb_outline,
-                        size: 20,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        'Suggestions',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
+                        'Your Search',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface.withOpacity(0.6),
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _buildSearchBadges(context),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  _buildSuggestion(context, 'Try expanding your budget range'),
-                  _buildSuggestion(context, 'Consider nearby neighborhoods'),
-                  _buildSuggestion(context, 'Adjust the number of bedrooms'),
-                  _buildSuggestion(context, 'Remove some amenity filters'),
+                ),
+              ],
+
+              // What would you like to do section
+              const SizedBox(height: 16),
+              Text(
+                'What would you like to do?',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+
+              // Action buttons
+              const SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Property Hunting button
+                  if (onStartPropertyHunting != null)
+                    ElevatedButton(
+                      onPressed: onStartPropertyHunting,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        padding: const EdgeInsets.all(12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, size: 16),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Request Property Hunt',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onPrimary,
+                                  ),
+                                ),
+                                Text(
+                                  'Find unlisted properties',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color:
+                                        colorScheme.onPrimary.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Adjust Search button
+                  if (onAdjustSearch != null) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: onAdjustSearch,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange.shade700,
+                        padding: const EdgeInsets.all(12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: Colors.orange.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.trending_up, size: 16),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Adjust Search',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'Try different criteria',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.orange.shade700
+                                        .withOpacity(0.75),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
 
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _handleAdjustSearch,
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Adjust Search'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+              // Quick Suggestions
+              if (suggestions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.blue.shade200.withOpacity(0.5),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _handleStartHunting,
-                    icon: const Icon(Icons.search),
-                    label: const Text('Start Hunting'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Quick Suggestions',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...suggestions.take(3).map((suggestion) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '• $suggestion',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          )),
+                    ],
                   ),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  /// Build search criteria display
-  Widget _buildSearchCriteria(BuildContext context) {
-    final theme = Theme.of(context);
-    final criteria = <Widget>[];
-
-    // Extract and display relevant search criteria
-    if (searchCriteria['location'] != null) {
-      criteria.add(_buildCriteriaChip(
-        context,
-        Icons.location_on,
-        'Location: ${searchCriteria['location']}',
-      ));
-    }
-
-    if (searchCriteria['minRent'] != null || searchCriteria['maxRent'] != null) {
-      final minRent = searchCriteria['minRent'];
-      final maxRent = searchCriteria['maxRent'];
-      String rentText = 'Budget: ';
-      if (minRent != null && maxRent != null) {
-        rentText += 'KES ${_formatNumber(minRent)} - ${_formatNumber(maxRent)}';
-      } else if (minRent != null) {
-        rentText += 'From KES ${_formatNumber(minRent)}';
-      } else if (maxRent != null) {
-        rentText += 'Up to KES ${_formatNumber(maxRent)}';
-      }
-      criteria.add(_buildCriteriaChip(context, Icons.payments, rentText));
-    }
-
-    if (searchCriteria['bedrooms'] != null) {
-      criteria.add(_buildCriteriaChip(
-        context,
-        Icons.bed_outlined,
-        '${searchCriteria['bedrooms']} Bedrooms',
-      ));
-    }
-
-    if (searchCriteria['bathrooms'] != null) {
-      criteria.add(_buildCriteriaChip(
-        context,
-        Icons.bathroom_outlined,
-        '${searchCriteria['bathrooms']} Bathrooms',
-      ));
-    }
-
-    if (searchCriteria['propertyType'] != null) {
-      criteria.add(_buildCriteriaChip(
-        context,
-        Icons.home_outlined,
-        searchCriteria['propertyType'],
-      ));
-    }
-
-    if (searchCriteria['amenities'] != null) {
-      final amenities = searchCriteria['amenities'] as List?;
-      if (amenities != null && amenities.isNotEmpty) {
-        criteria.add(_buildCriteriaChip(
-          context,
-          Icons.check_circle_outline,
-          'Amenities: ${amenities.join(", ")}',
-        ));
-      }
-    }
-
-    // If no criteria found, show a generic message
-    if (criteria.isEmpty) {
-      return Text(
-        'No specific criteria provided',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurface.withOpacity(0.6),
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: criteria,
-    );
-  }
-
-  /// Build a single criteria chip
-  Widget _buildCriteriaChip(BuildContext context, IconData icon, String label) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: theme.colorScheme.onPrimaryContainer,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build a single suggestion item
-  Widget _buildSuggestion(BuildContext context, String suggestion) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.arrow_right,
-              size: 16,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              suggestion,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              // Agent Help Info
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🔍 Agent Help Benefits',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Our agents have access to unlisted properties and can find options that match your exact needs within 2-4 hours.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.primary.withOpacity(0.9),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  /// Format number with thousand separators
-  String _formatNumber(dynamic number) {
-    if (number == null) return '0';
-    final num = number is int ? number : int.tryParse(number.toString()) ?? 0;
-    return num.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
+  /// Build search criteria badges
+  List<Widget> _buildSearchBadges(BuildContext context) {
+    final theme = Theme.of(context);
+    final badges = <Widget>[];
+
+    searchCriteria.forEach((key, value) {
+      if (value != null && value.toString().isNotEmpty) {
+        IconData? icon;
+        if (key.toLowerCase().contains('location')) {
+          icon = Icons.location_on;
+        } else if (key.toLowerCase().contains('bedroom')) {
+          icon = Icons.bed;
+        } else if (key.toLowerCase().contains('rent') ||
+            key.toLowerCase().contains('price')) {
+          icon = Icons.attach_money;
+        }
+
+        badges.add(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: theme.colorScheme.outline.withOpacity(0.3),
+              ),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon,
+                      size: 12,
+                      color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  _formatValue(value),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
         );
+      }
+    });
+
+    return badges;
   }
 
-  /// Handle adjust search button press
-  void _handleAdjustSearch() {
-    if (onSendMessage != null) {
-      onSendMessage!('I want to adjust my search criteria');
-    }
+  /// Format key for display
+  String _formatKey(String key) {
+    // Convert camelCase to Title Case
+    final result = key.replaceAllMapped(
+      RegExp(r'([A-Z])'),
+      (match) => ' ${match.group(0)}',
+    );
+    return result[0].toUpperCase() + result.substring(1);
   }
 
-  /// Handle start property hunting button press
-  void _handleStartHunting() {
-    if (onSendMessage != null) {
-      onSendMessage!('I want to start property hunting');
+  /// Format value for display
+  String _formatValue(dynamic value) {
+    if (value is List) {
+      return value.join(', ');
     }
+    if (value is num) {
+      return 'KSh ${value.toStringAsFixed(0)}';
+    }
+    return value.toString();
   }
 }

@@ -1,90 +1,315 @@
 import 'package:flutter/material.dart';
-import 'card_styles.dart';
-import 'package:intl/intl.dart';
+import 'package:video_player/video_player.dart' show VideoPlayerController, VideoPlayer, VideoProgressIndicator, VideoProgressColors;
 
-/// PropertyDataCard displays extracted property data for review.
-///
-/// This card organizes property data into sections (Basic, Financial, Location, Details)
-/// and allows users to edit individual fields and confirm the data.
+/// PropertyDataCard displays extracted property data from video analysis
+/// Matches web implementation with visual grid layout and review functionality
 class PropertyDataCard extends StatelessWidget {
-  /// Extracted property data to display
-  final Map<String, dynamic> propertyData;
-
-  /// Callback when user wants to edit a specific field
-  final Function(String fieldName, dynamic currentValue)? onEdit;
-
-  /// Callback when user confirms the data
-  final VoidCallback? onConfirm;
+  final Map<String, dynamic> data;
+  final String? message;
+  final String? videoUrl;
+  final Map<String, dynamic>? instructions;
 
   const PropertyDataCard({
     super.key,
-    required this.propertyData,
-    this.onEdit,
-    this.onConfirm,
+    required this.data,
+    this.message,
+    this.videoUrl,
+    this.instructions,
   });
 
-  /// Format currency values
-  String _formatCurrency(dynamic value) {
-    if (value == null) return 'Not specified';
-    final formatter = NumberFormat('#,###', 'en_US');
-    final amount = value is int ? value : int.tryParse(value.toString()) ?? 0;
-    return 'KSh ${formatter.format(amount)}';
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF10B981).withOpacity(0.1), // emerald-500
+              Colors.teal.shade50.withOpacity(0.5),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              if (message != null || instructions != null) ...[
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.apartment,
+                      size: 20,
+                      color: Color(0xFF10B981),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        message ?? 'Review the extracted details',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (instructions?['description'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    instructions!['description'],
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+                if (instructions?['actions'] != null) ...[
+                  const SizedBox(height: 8),
+                  ...(instructions!['actions'] as List).map((action) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '• ',
+                              style: TextStyle(
+                                color: Color(0xFF10B981),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                action.toString(),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline.withOpacity(0.2)),
+                const SizedBox(height: 16),
+              ],
+
+              // Video Preview
+              if (videoUrl?.isNotEmpty == true) ...[
+                Text(
+                  'Property Video:',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                VideoPlayerWidget(videoUrl: videoUrl!),
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline.withOpacity(0.2)),
+                const SizedBox(height: 16),
+              ],
+
+              // Property Details Grid
+              _buildDetailsGrid(context),
+
+              // Enhanced Details
+              if (_hasEnhancedDetails()) ...[
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline.withOpacity(0.2)),
+                const SizedBox(height: 16),
+                _buildEnhancedDetails(context),
+              ],
+
+              // Security Features
+              if (data['securityFeatures'] != null &&
+                  (data['securityFeatures'] as List).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline.withOpacity(0.2)),
+                const SizedBox(height: 16),
+                _buildSecurityFeatures(context),
+              ],
+
+              // Nearby Amenities
+              if (data['nearbyAmenities'] != null &&
+                  (data['nearbyAmenities'] as List).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline.withOpacity(0.2)),
+                const SizedBox(height: 16),
+                _buildNearbyAmenities(context),
+              ],
+
+              // Amenities
+              if (data['amenities'] != null &&
+                  (data['amenities'] as List).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline.withOpacity(0.2)),
+                const SizedBox(height: 16),
+                _buildAmenities(context),
+              ],
+
+              // Action Prompt
+              const SizedBox(height: 16),
+              Divider(color: colorScheme.outline.withOpacity(0.2)),
+              const SizedBox(height: 16),
+              Text(
+                'Please review the details above. If everything looks good, just say "looks good" or "correct". Need to make changes? Simply tell me what to update, like "it\'s actually 2 bedrooms" or "change location to Westlands"',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  /// Get value from property data with fallback
-  dynamic _getValue(String key, {dynamic defaultValue = 'Not specified'}) {
-    return propertyData[key] ?? defaultValue;
+  Widget _buildDetailsGrid(BuildContext context) {
+  
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        if (data['propertyType'] != null)
+          _buildDetailItem(
+            context,
+            Icons.apartment,
+            'Type',
+            _formatPropertyType(data['propertyType']),
+          ),
+        if (data['bedrooms'] != null)
+          _buildDetailItem(
+            context,
+            Icons.bed,
+            'Bedrooms',
+            data['bedrooms'].toString(),
+          ),
+        if (data['bathrooms'] != null)
+          _buildDetailItem(
+            context,
+            Icons.bathtub,
+            'Bathrooms',
+            data['bathrooms'].toString(),
+          ),
+        if (data['rentAmount'] != null)
+          _buildDetailItem(
+            context,
+            Icons.attach_money,
+            'Monthly Rent',
+            'KSh ${(data['rentAmount'] as num).toStringAsFixed(0)}',
+          ),
+        if (data['location'] != null)
+          _buildDetailItem(
+            context,
+            Icons.location_on,
+            'Location',
+            data['location'].toString(),
+          ),
+        if (data['furnishingStatus'] != null)
+          _buildDetailItem(
+            context,
+            Icons.chair,
+            'Furnishing',
+            _formatFurnishing(data['furnishingStatus']),
+          ),
+        if (data['availabilityDate'] != null)
+          _buildDetailItem(
+            context,
+            Icons.calendar_today,
+            'Available',
+            data['availabilityDate'].toString(),
+          ),
+        if (data['floorLevel'] != null)
+          _buildDetailItem(
+            context,
+            Icons.layers,
+            'Floor',
+            data['floorLevel'].toString(),
+          ),
+        if (data['parkingSpaces'] != null)
+          _buildDetailItem(
+            context,
+            Icons.local_parking,
+            'Parking',
+            '${data['parkingSpaces']} space${data['parkingSpaces'] != 1 ? 's' : ''}',
+          ),
+        if (data['depositAmount'] != null)
+          _buildDetailItem(
+            context,
+            Icons.account_balance_wallet,
+            'Deposit',
+            'KSh ${(data['depositAmount'] as num).toStringAsFixed(0)}',
+          ),
+        if (data['additionalCosts'] != null)
+          _buildDetailItem(
+            context,
+            Icons.receipt,
+            'Additional Costs',
+            data['additionalCosts'].toString(),
+            fullWidth: true,
+          ),
+        if (data['condition'] != null)
+          _buildDetailItem(
+            context,
+            Icons.star,
+            'Condition',
+            _formatCondition(data['condition']),
+          ),
+        if (data['estimatedSize'] != null)
+          _buildDetailItem(
+            context,
+            Icons.square_foot,
+            'Size',
+            data['estimatedSize'].toString(),
+          ),
+        if (data['marketPosition'] != null)
+          _buildDetailItem(
+            context,
+            Icons.trending_up,
+            'Market',
+            data['marketPosition'].toString().toUpperCase(),
+          ),
+      ],
+    );
   }
 
-  /// Check if a field has a valid value
-  bool _hasValue(String key) {
-    final value = propertyData[key];
-    if (value == null) return false;
-    if (value is String && value.trim().isEmpty) return false;
-    if (value is List && value.isEmpty) return false;
-    return true;
-  }
-
-  /// Build a data field row with edit button
-  Widget _buildDataField({
-    required BuildContext context,
-    required String label,
-    required String fieldKey,
-    required String displayValue,
-    required ThemeData theme,
-    bool isValid = true,
+  Widget _buildDetailItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    bool fullWidth = false,
   }) {
+    final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isValid
-            ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
-            : colorScheme.errorContainer.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isValid
-              ? colorScheme.outline.withOpacity(0.2)
-              : colorScheme.error.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
+      width: fullWidth ? double.infinity : null,
+      constraints: fullWidth ? null : const BoxConstraints(minWidth: 150),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
         children: [
-          // Validation indicator
-          Container(
-            margin: const EdgeInsets.only(top: 2, right: 10),
-            child: Icon(
-              isValid ? Icons.check_circle : Icons.error_outline,
-              size: 18,
-              color: isValid ? Colors.green : colorScheme.error,
-            ),
+          Icon(
+            icon,
+            size: 16,
+            color: const Color(0xFF10B981),
           ),
-          // Field content
-          Expanded(
+          const SizedBox(width: 8),
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -92,179 +317,308 @@ class PropertyDataCard extends StatelessWidget {
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withOpacity(0.6),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 4),
                 Text(
-                  displayValue,
+                  value,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          // Edit button
-          if (onEdit != null)
-            IconButton(
-              onPressed: () {
-                onEdit?.call(fieldKey, propertyData[fieldKey]);
-              },
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              tooltip: 'Edit $label',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 32,
-                minHeight: 32,
-              ),
-              style: IconButton.styleFrom(
-                foregroundColor: colorScheme.primary,
-              ),
-            ),
         ],
       ),
     );
   }
 
-  /// Build a section header
-  Widget _buildSectionHeader({
-    required String title,
-    required IconData icon,
-    required ThemeData theme,
-  }) {
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, top: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
+  bool _hasEnhancedDetails() {
+    return data['viewType'] != null ||
+        data['buildingType'] != null ||
+        data['waterSupply'] != null ||
+        data['transportAccess'] != null ||
+        data['electricityBackup'] == true ||
+        data['internetAvailable'] == true ||
+        data['petsAllowed'] == true ||
+        data['hasBalcony'] == true ||
+        data['hasGarden'] == true;
   }
 
-  /// Build list field (amenities, features, etc.)
-  Widget _buildListField({
-    required BuildContext context,
-    required String label,
-    required String fieldKey,
-    required List<dynamic> items,
-    required ThemeData theme,
-  }) {
+  Widget _buildEnhancedDetails(BuildContext context) {
+    final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isValid = items.isNotEmpty;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isValid
-            ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
-            : colorScheme.errorContainer.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isValid
-              ? colorScheme.outline.withOpacity(0.2)
-              : colorScheme.error.withOpacity(0.3),
-          width: 1,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Additional Details',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            if (data['viewType'] != null)
+              _buildEnhancedItem(context, 'View', data['viewType']),
+            if (data['buildingType'] != null)
+              _buildEnhancedItem(context, 'Building', data['buildingType']),
+            if (data['waterSupply'] != null)
+              _buildEnhancedItem(context, 'Water', data['waterSupply']),
+            if (data['transportAccess'] != null)
+              _buildEnhancedItem(context, 'Transport', data['transportAccess']),
+            if (data['electricityBackup'] == true)
+              _buildEnhancedItem(context, 'Backup Power', 'Yes ✅'),
+            if (data['internetAvailable'] == true)
+              _buildEnhancedItem(context, 'Internet', 'Available ✅'),
+            if (data['petsAllowed'] == true)
+              _buildEnhancedItem(context, 'Pets', 'Allowed ✅'),
+            if (data['hasBalcony'] == true)
+              _buildEnhancedItem(context, 'Balcony', 'Yes ✅'),
+            if (data['hasGarden'] == true)
+              _buildEnhancedItem(context, 'Garden', 'Yes ✅'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedItem(BuildContext context, String label, dynamic value) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return RichText(
+      text: TextSpan(
+        style: theme.textTheme.bodySmall,
         children: [
-          Row(
-            children: [
-              Icon(
-                isValid ? Icons.check_circle : Icons.error_outline,
-                size: 18,
-                color: isValid ? Colors.green : colorScheme.error,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurface.withOpacity(0.6),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              if (onEdit != null)
-                IconButton(
-                  onPressed: () {
-                    onEdit?.call(fieldKey, items);
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  tooltip: 'Edit $label',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
-                  style: IconButton.styleFrom(
-                    foregroundColor: colorScheme.primary,
-                  ),
-                ),
-            ],
+          TextSpan(
+            text: '$label: ',
+            style: TextStyle(
+              color: colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
-          const SizedBox(height: 8),
-          if (items.isEmpty)
-            Text(
-              'No items specified',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.5),
-                fontStyle: FontStyle.italic,
+          TextSpan(
+            text: value.toString(),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecurityFeatures(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final features = data['securityFeatures'] as List;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Security Features',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: features.map((feature) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: const Color(0xFF10B981).withOpacity(0.3),
+                ),
+                borderRadius: BorderRadius.circular(6),
               ),
-            )
-          else
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: items.map((item) {
-                return Chip(
-                  label: Text(
-                    item.toString(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔒 ', style: TextStyle(fontSize: 12)),
+                  Text(
+                    feature.toString(),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 12,
+                      color: const Color(0xFF10B981),
                     ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: colorScheme.primaryContainer.withOpacity(0.5),
-                  side: BorderSide.none,
-                );
-              }).toList(),
-            ),
-        ],
-      ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
+  }
+
+  Widget _buildNearbyAmenities(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final amenities = data['nearbyAmenities'] as List;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Nearby',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: amenities.map((amenity) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.blue.shade600.withOpacity(0.3),
+                ),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('📍 ', style: TextStyle(fontSize: 12)),
+                  Text(
+                    amenity.toString(),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAmenities(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final amenities = data['amenities'] as List;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Amenities',
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: amenities.map((amenity) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                amenity.toString(),
+                style: theme.textTheme.bodySmall,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  String _formatPropertyType(dynamic type) {
+    final typeMap = {
+      'bedsitter': 'Bedsitter',
+      'studio': 'Studio',
+      'oneBedroom': 'One Bedroom',
+      'twoBedroom': 'Two Bedroom',
+      'threeBedroom': 'Three Bedroom',
+    };
+    return typeMap[type.toString()] ?? type.toString();
+  }
+
+  String _formatFurnishing(dynamic status) {
+    final statusMap = {
+      'furnished': 'Fully Furnished',
+      'semi-furnished': 'Semi-Furnished',
+      'unfurnished': 'Unfurnished',
+    };
+    return statusMap[status.toString()] ?? status.toString();
+  }
+
+  String _formatCondition(dynamic condition) {
+    final conditionMap = {
+      'excellent': 'Excellent ⭐⭐⭐⭐⭐',
+      'good': 'Good ⭐⭐⭐⭐',
+      'fair': 'Fair ⭐⭐⭐',
+      'poor': 'Needs Improvement ⭐⭐',
+    };
+    return conditionMap[condition.toString()] ?? condition.toString();
+  }
+}
+
+
+/// Video Player Widget for displaying property videos
+class VideoPlayerWidget extends StatefulWidget {
+  final String videoUrl;
+
+  const VideoPlayerWidget({
+    super.key,
+    required this.videoUrl,
+  });
+
+  @override
+  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
+}
+
+class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      await _controller.initialize();
+      setState(() {
+        _isInitialized = true;
+      });
+    } catch (e) {
+      print('Error initializing video: $e');
+      setState(() {
+        _hasError = true;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -272,298 +626,114 @@ class PropertyDataCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Extract data with defaults
-    final title = _getValue('title');
-    final description = _getValue('description');
-    final propertyType = _getValue('propertyType', defaultValue: _getValue('property_type'));
-    final bedrooms = _getValue('bedrooms', defaultValue: 0);
-    final bathrooms = _getValue('bathrooms', defaultValue: 0);
-    final rentAmount = _getValue('rentAmount', defaultValue: _getValue('rent_amount'));
-    final commissionAmount = _getValue('commissionAmount', defaultValue: _getValue('commission_amount'));
-    final location = _getValue('location');
-    final address = _getValue('address', defaultValue: location);
-    final neighborhood = _getValue('neighborhood');
-    final amenities = _getValue('amenities', defaultValue: []);
-    final features = _getValue('features', defaultValue: []);
-
-    // Validation
-    final hasTitle = _hasValue('title');
-    final hasDescription = _hasValue('description');
-    final hasPropertyType = _hasValue('propertyType') || _hasValue('property_type');
-    final hasRent = _hasValue('rentAmount') || _hasValue('rent_amount');
-    final hasLocation = _hasValue('location') || _hasValue('address');
-
-    final allValid = hasTitle && hasDescription && hasPropertyType && hasRent && hasLocation;
-
-    return Card(
-      elevation: 2,
-      margin: CardStyles.cardMargin,
-      clipBehavior: Clip.antiAlias,
-      shape: CardStyles.cardShape(context),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: CardStyles.cardPadding,
+    if (_hasError) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: const Center(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.fact_check_outlined,
-                    size: 24,
-                    color: colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Review Property Data',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Verify extracted information',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Validation summary
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: allValid
-                    ? Colors.green.withOpacity(0.1)
-                    : colorScheme.errorContainer.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: allValid
-                      ? Colors.green.withOpacity(0.3)
-                      : colorScheme.error.withOpacity(0.3),
-                  width: 1,
-                ),
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.white70,
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    allValid ? Icons.check_circle : Icons.warning_amber_rounded,
-                    size: 20,
-                    color: allValid ? Colors.green : colorScheme.error,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      allValid
-                          ? 'All required fields are complete'
-                          : 'Some required fields need attention',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Basic Information Section
-            _buildSectionHeader(
-              title: 'Basic Information',
-              icon: Icons.home_outlined,
-              theme: theme,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'PROPERTY TITLE',
-              fieldKey: 'title',
-              displayValue: title.toString(),
-              theme: theme,
-              isValid: hasTitle,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'DESCRIPTION',
-              fieldKey: 'description',
-              displayValue: description.toString(),
-              theme: theme,
-              isValid: hasDescription,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'PROPERTY TYPE',
-              fieldKey: 'propertyType',
-              displayValue: propertyType.toString(),
-              theme: theme,
-              isValid: hasPropertyType,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'BEDROOMS',
-              fieldKey: 'bedrooms',
-              displayValue: bedrooms.toString(),
-              theme: theme,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'BATHROOMS',
-              fieldKey: 'bathrooms',
-              displayValue: bathrooms.toString(),
-              theme: theme,
-            ),
-
-            const SizedBox(height: 12),
-
-            // Financial Information Section
-            _buildSectionHeader(
-              title: 'Financial Information',
-              icon: Icons.payments_outlined,
-              theme: theme,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'MONTHLY RENT',
-              fieldKey: 'rentAmount',
-              displayValue: _formatCurrency(rentAmount),
-              theme: theme,
-              isValid: hasRent,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'COMMISSION',
-              fieldKey: 'commissionAmount',
-              displayValue: _formatCurrency(commissionAmount),
-              theme: theme,
-            ),
-
-            const SizedBox(height: 12),
-
-            // Location Information Section
-            _buildSectionHeader(
-              title: 'Location Information',
-              icon: Icons.location_on_outlined,
-              theme: theme,
-            ),
-            _buildDataField(
-              context: context,
-              label: 'LOCATION',
-              fieldKey: 'location',
-              displayValue: location.toString(),
-              theme: theme,
-              isValid: hasLocation,
-            ),
-            if (_hasValue('address'))
-              _buildDataField(
-                context: context,
-                label: 'ADDRESS',
-                fieldKey: 'address',
-                displayValue: address.toString(),
-                theme: theme,
-              ),
-            if (_hasValue('neighborhood'))
-              _buildDataField(
-                context: context,
-                label: 'NEIGHBORHOOD',
-                fieldKey: 'neighborhood',
-                displayValue: neighborhood.toString(),
-                theme: theme,
-              ),
-
-            const SizedBox(height: 12),
-
-            // Details Section
-            _buildSectionHeader(
-              title: 'Property Details',
-              icon: Icons.list_alt_outlined,
-              theme: theme,
-            ),
-            if (amenities is List)
-              _buildListField(
-                context: context,
-                label: 'AMENITIES',
-                fieldKey: 'amenities',
-                items: amenities,
-                theme: theme,
-              ),
-            if (features is List)
-              _buildListField(
-                context: context,
-                label: 'FEATURES',
-                fieldKey: 'features',
-                items: features,
-                theme: theme,
-              ),
-
-            const SizedBox(height: 20),
-
-            // Action buttons
-            if (onConfirm != null) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        // Edit action - could open a dialog or navigate
-                        onEdit?.call('all', propertyData);
-                      },
-                      icon: const Icon(Icons.edit, size: 18),
-                      label: const Text('Edit All'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        foregroundColor: colorScheme.primary,
-                        side: BorderSide(
-                          color: colorScheme.primary,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: allValid ? onConfirm : null,
-                      icon: const Icon(Icons.check_circle, size: 18),
-                      label: const Text('Confirm Data'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: allValid ? Colors.green : null,
-                        foregroundColor: allValid ? Colors.white : null,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              SizedBox(height: 8),
+              Text(
+                'Failed to load video',
+                style: TextStyle(color: Colors.white70),
               ),
             ],
-          ],
+          ),
+        ),
+      );
+    }
+
+    if (!_isInitialized) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
         ),
       ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Video player
+            AspectRatio(
+              aspectRatio: _controller.value.aspectRatio,
+              child: VideoPlayer(_controller),
+            ),
+            // Play/Pause button
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (_controller.value.isPlaying) {
+                    _controller.pause();
+                  } else {
+                    _controller.play();
+                  }
+                });
+              },
+              child: Container(
+                color: Colors.transparent,
+                child: Center(
+                  child: Icon(
+                    _controller.value.isPlaying
+                        ? Icons.pause_circle_outline
+                        : Icons.play_circle_outline,
+                    size: 64,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ),
+            ),
+            // Progress indicator
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: VideoProgressIndicator(
+                _controller,
+                allowScrubbing: true,
+                colors: const VideoProgressColors(
+                  playedColor: Color(0xFF10B981),
+                  bufferedColor: Colors.white30,
+                  backgroundColor: Colors.white10,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

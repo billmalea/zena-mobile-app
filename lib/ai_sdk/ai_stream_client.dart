@@ -92,6 +92,9 @@ class AIStreamClient {
     String textBuffer = '';
     int chunkCount = 0;
     int eventCount = 0;
+    
+    // Track tool names by call ID (tool-output-available doesn't include toolName)
+    final Map<String, String> toolCallIdToName = {};
 
     print('🎬 [AIStreamClient] Starting stream parsing...');
 
@@ -129,7 +132,7 @@ class AIStreamClient {
 
             // DataStream format (JSON objects with type field)
             if (type != null) {
-              final event = _parseDataStreamEvent(json, textBuffer);
+              final event = _parseDataStreamEvent(json, textBuffer, toolCallIdToName);
               if (event != null) {
                 eventCount++;
                 print('✅ [AIStreamClient] Event #$eventCount: ${event.type}');
@@ -169,7 +172,7 @@ class AIStreamClient {
         if (data.isNotEmpty && data != '[DONE]') {
           try {
             final json = jsonDecode(data) as Map<String, dynamic>;
-            final event = _parseDataStreamEvent(json, textBuffer);
+            final event = _parseDataStreamEvent(json, textBuffer, toolCallIdToName);
             if (event != null) {
               yield event;
             }
@@ -187,36 +190,75 @@ class AIStreamClient {
   }
 
   /// Parse DataStream format events (JSON objects with type field)
-  AIStreamEvent? _parseDataStreamEvent(Map<String, dynamic> json, String currentTextBuffer) {
+  AIStreamEvent? _parseDataStreamEvent(
+    Map<String, dynamic> json, 
+    String currentTextBuffer,
+    Map<String, String> toolCallIdToName,
+  ) {
     final type = json['type'] as String?;
 
     // Handle tool-specific events
+    // AI SDK v5: tool-input-* events are for tool calls, tool-output-* are for results
     if (type == 'tool-input-start' || type == 'tool-input-delta' || type == 'tool-input-available') {
-      // Tool input events - treat as tool call
+      // Tool input events - store mapping and yield for loading states
       final toolName = json['toolName'] as String?;
       final toolCallId = json['toolCallId'] as String?;
       
-      if (type == 'tool-input-available') {
-        print('🔧 [AIStreamClient] Tool call: $toolName');
+      // Store tool name for later use (tool-output-available doesn't include it)
+      if (toolName != null && toolCallId != null) {
+        toolCallIdToName[toolCallId] = toolName;
+        print('🔗 [AIStreamClient] Mapped toolCallId $toolCallId -> $toolName');
+      }
+      
+      // Yield tool call events for loading indicators
+      if (type == 'tool-input-start') {
+        print('🔄 [AIStreamClient] Tool call started: $toolName');
         return AIStreamEvent(
-          type: AIStreamEventType.toolCall,
+          type: AIStreamEventType.toolCallStreaming,
+          toolName: toolName,
+          toolCallId: toolCallId,
+          annotations: json['annotations'] as Map<String, dynamic>?,
+        );
+      } else if (type == 'tool-input-available') {
+        print('✅ [AIStreamClient] Tool call available: $toolName');
+        return AIStreamEvent(
+          type: AIStreamEventType.toolCallAvailable,
           toolName: toolName,
           toolCallId: toolCallId,
           toolArgs: json['args'],
           annotations: json['annotations'] as Map<String, dynamic>?,
         );
       }
-      return null; // Skip input-start and input-delta
+      
+      // Skip input-delta events
+      return null;
     } else if (type == 'tool-output-available') {
-      // Tool output event - treat as tool result
+      // Tool output event - THIS is what we render
+      // Note: tool-output-available doesn't include toolName, so we look it up
       final toolCallId = json['toolCallId'] as String?;
+      final toolName = toolCallId != null ? toolCallIdToName[toolCallId] : null;
       final output = json['output'];
       
-      print('📊 [AIStreamClient] Tool result received');
+      print('📊 [AIStreamClient] Tool result received: $toolName (from callId: $toolCallId)');
       return AIStreamEvent(
         type: AIStreamEventType.toolResult,
+        toolName: toolName,
         toolCallId: toolCallId,
         toolResult: output,
+        annotations: json['annotations'] as Map<String, dynamic>?,
+      );
+    } else if (type == 'tool-output-error') {
+      // Tool error event
+      final toolCallId = json['toolCallId'] as String?;
+      final toolName = toolCallId != null ? toolCallIdToName[toolCallId] : null;
+      final errorText = json['errorText'] as String?;
+      
+      print('❌ [AIStreamClient] Tool error: $toolName - $errorText');
+      return AIStreamEvent(
+        type: AIStreamEventType.toolError,
+        toolName: toolName,
+        toolCallId: toolCallId,
+        error: errorText ?? 'Tool execution failed',
         annotations: json['annotations'] as Map<String, dynamic>?,
       );
     } else if (type == 'start-step' || type == 'finish-step') {
@@ -262,21 +304,29 @@ class AIStreamClient {
         );
       } else if (state == 'output-error') {
         return AIStreamEvent(
-          type: AIStreamEventType.error,
+          type: AIStreamEventType.toolError,
+          toolName: toolName,
           error: 'Tool $toolName failed: ${errorText ?? "Unknown error"}',
         );
-      } else if (state == 'input-streaming' || state == 'input-available') {
+      } else if (state == 'input-streaming') {
         return AIStreamEvent(
-          type: AIStreamEventType.toolCall,
+          type: AIStreamEventType.toolCallStreaming,
+          toolName: toolName,
+          toolState: state,
+          annotations: json['annotations'] as Map<String, dynamic>?,
+        );
+      } else if (state == 'input-available') {
+        return AIStreamEvent(
+          type: AIStreamEventType.toolCallAvailable,
           toolName: toolName,
           toolState: state,
           annotations: json['annotations'] as Map<String, dynamic>?,
         );
       }
     } else if (type == 'tool-call') {
-      // Tool call in DataStream format
+      // Tool call in DataStream format - treat as streaming
       return AIStreamEvent(
-        type: AIStreamEventType.toolCall,
+        type: AIStreamEventType.toolCallStreaming,
         toolName: json['toolName'] as String?,
         toolArgs: json['args'],
         annotations: json['annotations'] as Map<String, dynamic>?,
@@ -358,12 +408,12 @@ class AIStreamClient {
           delta: decodedText,
         );
       } else if (prefix == '2') {
-        // Tool calls
+        // Tool calls - treat as available state
         final toolCalls = jsonDecode(content) as List;
         if (toolCalls.isNotEmpty) {
           final toolCall = toolCalls.first as Map<String, dynamic>;
           return AIStreamEvent(
-            type: AIStreamEventType.toolCall,
+            type: AIStreamEventType.toolCallAvailable,
             toolName: toolCall['toolName'] as String?,
             toolCallId: toolCall['toolCallId'] as String?,
             toolArgs: toolCall['args'],
@@ -436,8 +486,10 @@ class AIStreamClient {
 /// AI Stream Event Types
 enum AIStreamEventType {
   textDelta,
-  toolCall,
-  toolResult,
+  toolCallStreaming,    // tool-input-start (loading state)
+  toolCallAvailable,    // tool-input-available (processing state)
+  toolResult,           // tool-output-available (final result)
+  toolError,            // tool-output-error (error state)
   error,
   done,
   stepStart,
@@ -483,8 +535,10 @@ class AIStreamEvent {
   });
 
   bool get isText => type == AIStreamEventType.textDelta;
-  bool get isToolCall => type == AIStreamEventType.toolCall;
+  bool get isToolCallStreaming => type == AIStreamEventType.toolCallStreaming;
+  bool get isToolCallAvailable => type == AIStreamEventType.toolCallAvailable;
   bool get isToolResult => type == AIStreamEventType.toolResult;
+  bool get isToolError => type == AIStreamEventType.toolError;
   bool get isError => type == AIStreamEventType.error;
   bool get isDone => type == AIStreamEventType.done;
   bool get isStepStart => type == AIStreamEventType.stepStart;

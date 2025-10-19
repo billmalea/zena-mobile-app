@@ -40,9 +40,20 @@ class NeighborhoodInfoCard extends StatelessWidget {
       margin: CardStyles.cardMargin,
       clipBehavior: Clip.antiAlias,
       shape: CardStyles.cardShape(context),
-      child: Padding(
-        padding: CardStyles.cardPadding,
-        child: Column(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primaryContainer.withOpacity(0.3),
+              colorScheme.secondaryContainer.withOpacity(0.2),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: CardStyles.cardPadding,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with location icon
@@ -274,6 +285,7 @@ class NeighborhoodInfoCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

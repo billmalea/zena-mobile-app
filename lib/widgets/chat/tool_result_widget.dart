@@ -11,6 +11,12 @@ import 'tool_cards/commission_card.dart';
 import 'tool_cards/neighborhood_info_card.dart';
 import 'tool_cards/affordability_card.dart';
 import 'tool_cards/auth_prompt_card.dart';
+import 'tool_cards/no_properties_found_card.dart';
+import 'tool_cards/payment_status_card.dart';
+import 'tool_cards/property_data_card.dart';
+import 'tool_cards/missing_fields_card.dart';
+import 'tool_cards/final_review_card.dart';
+import 'tool_cards/rental_success_card.dart';
 
 /// Central factory widget for routing tool results to appropriate specialized cards
 ///
@@ -106,31 +112,115 @@ class ToolResultWidget extends StatelessWidget {
   /// Build property search results display
   Widget _buildPropertySearchResults(BuildContext context) {
     final properties = toolResult.result['properties'] as List?;
+    final canTriggerPropertyHunting = toolResult.result['canTriggerPropertyHunting'] as bool? ?? false;
 
-    if (properties == null || properties.isEmpty) {
+    // Handle no results with property hunting offer
+    if ((properties == null || properties.isEmpty) && canTriggerPropertyHunting) {
       return _buildNoPropertiesFoundCard(context);
     }
 
-    // Display multiple property cards
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: properties.map((propertyData) {
-        return PropertyCard(
-          propertyData: propertyData as Map<String, dynamic>,
-        );
-      }).toList(),
-    );
+    // Handle results found - show header + property cards
+    if (properties != null && properties.isNotEmpty) {
+      final theme = Theme.of(context);
+      final colorScheme = theme.colorScheme;
+      final message = toolResult.result['message'] as String? ?? 
+                      'Found ${properties.length} rental properties';
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header card with gradient background
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.primaryContainer.withOpacity(0.5),
+                  colorScheme.secondaryContainer.withOpacity(0.3),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.business,
+                    size: 20,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Found ${properties.length} rental properties',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      if (message.isNotEmpty && message != 'Found ${properties.length} rental properties')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            message,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Property cards
+          ...properties.map((propertyData) {
+            return PropertyCard(
+              propertyData: propertyData as Map<String, dynamic>,
+            );
+          }),
+        ],
+      );
+    }
+
+    // Fallback for no results without property hunting
+    return _buildNoPropertiesFoundCard(context);
   }
 
   /// Build no properties found card
   Widget _buildNoPropertiesFoundCard(BuildContext context) {
-    // TODO: Implement NoPropertiesFoundCard in Task 4
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.search_off,
-      title: 'No Properties Found',
-      message:
-          'No properties match your search criteria. Try adjusting your filters.',
+    final searchCriteria = toolResult.result['searchCriteria'] as Map<String, dynamic>? ?? {};
+    final suggestions = (toolResult.result['suggestions'] as List?)
+                            ?.map((e) => e.toString())
+                            .toList() ?? 
+                        [];
+
+    return NoPropertiesFoundCard(
+      searchCriteria: searchCriteria,
+      suggestions: suggestions,
+      onStartPropertyHunting: onSendMessage != null
+          ? () => onSendMessage!('Yes, help me find properties')
+          : null,
+      onAdjustSearch: onSendMessage != null
+          ? () => onSendMessage!('Help me adjust my search criteria')
+          : null,
     );
   }
 
@@ -181,14 +271,11 @@ class ToolResultWidget extends StatelessWidget {
   Widget _buildContactInfoCard(BuildContext context) {
     final contactInfo =
         toolResult.result['contactInfo'] as Map<String, dynamic>? ?? {};
-    final paymentInfo =
-        toolResult.result['paymentInfo'] as Map<String, dynamic>?;
-    final message = toolResult.result['message'] as String? ?? '';
+       final message = toolResult.result['message'] as String? ?? '';
     final alreadyPaid = toolResult.result['alreadyPaid'] as bool? ?? false;
 
     return ContactInfoCard(
       contactInfo: contactInfo,
-      paymentInfo: paymentInfo,
       message: message,
       alreadyPaid: alreadyPaid,
     );
@@ -247,20 +334,103 @@ class ToolResultWidget extends StatelessWidget {
   }
 
   /// Build property submission result
+  /// Routes based on ACTUAL backend stages from property-tools-refactored.ts
   Widget _buildPropertySubmissionResult(BuildContext context) {
     final stage = toolResult.result['stage'] as String? ?? 'start';
-    final submissionId = toolResult.result['submissionId'] as String? ?? 
-                         toolResult.result['id'] as String? ?? 
-                         'unknown';
-    final message = toolResult.result['message'] as String? ?? '';
-    final data = toolResult.result['data'] as Map<String, dynamic>?;
+    
+    // Route based on ACTUAL backend stages:
+    // - video_upload: initial upload instructions
+    // - user_confirmation: show extracted data for review
+    // - missing_info: show missing required fields
+    // - final_review: show final confirmation
+    // - video_rejected: show rejection details
+    // - completed: show success
+    switch (stage.toLowerCase()) {
+      // Stage: user_confirmation - Show extracted data for review
+      case 'user_confirmation':
+        return _buildPropertyDataCard(context);
+      
+      // Stage: missing_info - Show missing required fields
+      case 'missing_info':
+        return _buildMissingFieldsCardResult(context);
+      
+      // Stage: final_review - Show final confirmation
+      case 'final_review':
+        return _buildFinalReviewCardResult(context);
+      
+      // Stages: video_upload, video_rejected, completed
+      case 'video_upload':
+      case 'video_rejected':
+      case 'completed':
+      default:
+        final success = toolResult.result['success'] as bool? ?? false;
+        final message = toolResult.result['message'] as String? ?? '';
+        final propertyId = toolResult.result['propertyId'] as String? ?? 
+                           toolResult.result['id'] as String?;
+        final estimatedCommission = (toolResult.result['estimatedCommission'] as num?)?.toDouble();
+        final error = toolResult.result['error'] as String?;
+        final requiresAuth = toolResult.result['requiresAuth'] as bool? ?? false;
+        final instructions = toolResult.result['instructions'] as Map<String, dynamic>?;
+        final rejection = toolResult.result['rejection'] as Map<String, dynamic>?;
 
-    return PropertySubmissionCard(
-      submissionId: submissionId,
-      stage: stage,
-      message: message,
+        return PropertySubmissionCard(
+          success: success,
+          message: message,
+          propertyId: propertyId,
+          estimatedCommission: estimatedCommission,
+          error: error,
+          requiresAuth: requiresAuth,
+          stage: stage,
+          instructions: instructions,
+          rejection: rejection,
+        );
+    }
+  }
+
+  /// Build property data card (confirm_data stage)
+  Widget _buildPropertyDataCard(BuildContext context) {
+    // Backend returns 'extractedData' for user_confirmation stage
+    final data = toolResult.result['extractedData'] as Map<String, dynamic>? ?? 
+                 toolResult.result['data'] as Map<String, dynamic>? ?? {};
+    final message = toolResult.result['message'] as String?;
+    final videoUrl = toolResult.result['videoUrl'] as String?;
+    final instructions = toolResult.result['instructions'] as Map<String, dynamic>?;
+
+    return PropertyDataCard(
       data: data,
-      onSendMessage: onSendMessage,
+      message: message,
+      videoUrl: videoUrl,
+      instructions: instructions,
+    );
+  }
+
+  /// Build missing fields card (provide_info stage)
+  Widget _buildMissingFieldsCardResult(BuildContext context) {
+    final currentData = toolResult.result['currentData'] as Map<String, dynamic>? ?? {};
+    final missingFields = (toolResult.result['missingFields'] as List?)
+                              ?.map((e) => e as Map<String, dynamic>)
+                              .toList() ?? [];
+    final message = toolResult.result['message'] as String?;
+    final instructions = toolResult.result['instructions'] as Map<String, dynamic>?;
+
+    return MissingFieldsCard(
+      currentData: currentData,
+      missingFields: missingFields,
+      message: message,
+      instructions: instructions,
+    );
+  }
+
+  /// Build final review card (final_confirm stage)
+  Widget _buildFinalReviewCardResult(BuildContext context) {
+    final data = toolResult.result['data'] as Map<String, dynamic>? ?? {};
+    final videoUrl = toolResult.result['videoUrl'] as String?;
+    final message = toolResult.result['message'] as String?;
+
+    return FinalReviewCard(
+      data: data,
+      videoUrl: videoUrl,
+      message: message,
     );
   }
 
@@ -369,17 +539,22 @@ class ToolResultWidget extends StatelessWidget {
 
   /// Build payment status result
   Widget _buildPaymentStatusResult(BuildContext context) {
-    // TODO: Implement payment status card
-    return _buildPlaceholderCard(
-      context,
-      icon: Icons.payment,
-      title: 'Payment Status',
-      message: 'Checking payment status...',
+    return PaymentStatusCard(
+      paymentInfo: toolResult.result,
+      onRetryPayment: onSendMessage != null
+          ? () => onSendMessage!('Retry payment')
+          : null,
     );
   }
 
   /// Build commission result
   Widget _buildCommissionResult(BuildContext context) {
+    // Check if this is a rental success confirmation (from confirmRentalSuccess tool)
+    if (toolResult.toolName == 'confirmRentalSuccess') {
+      return _buildRentalSuccessCard(context);
+    }
+    
+    // Otherwise, show regular commission card
     final amount = (toolResult.result['amount'] as num?)?.toDouble() ?? 
                    (toolResult.result['commission'] as num?)?.toDouble() ?? 
                    0.0;
@@ -413,6 +588,23 @@ class ToolResultWidget extends StatelessWidget {
       dateEarned: dateEarned,
       status: status,
       totalEarnings: totalEarnings,
+    );
+  }
+
+  /// Build rental success card
+  Widget _buildRentalSuccessCard(BuildContext context) {
+    final success = toolResult.result['success'] as bool? ?? false;
+    final message = toolResult.result['message'] as String? ?? '';
+    final commissionAmount = (toolResult.result['commissionAmount'] as num?)?.toDouble();
+    final dueDate = toolResult.result['dueDate'] as String?;
+    final error = toolResult.result['error'] as String?;
+
+    return RentalSuccessCard(
+      success: success,
+      message: message,
+      commissionAmount: commissionAmount,
+      dueDate: dueDate,
+      error: error,
     );
   }
 

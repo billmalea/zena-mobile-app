@@ -25,7 +25,7 @@ class ChatClient {
         );
 
   /// Send a message and stream the response
-  /// 
+  ///
   /// Returns a stream of [ChatResponse] objects containing:
   /// - Accumulated text
   /// - Tool calls and results
@@ -55,7 +55,7 @@ class ChatClient {
 
     // Track state
     String accumulatedText = '';
-    final toolCalls = <ToolCall>[];
+    final activeToolCalls = <ActiveToolCall>{}; // Track active tool calls by ID
     final toolResults = <ToolResult>[];
     final reasoningSteps = <String>[];
     Map<String, dynamic>? latestAnnotations;
@@ -73,57 +73,104 @@ class ChatClient {
         if (event.annotations != null) {
           latestAnnotations = event.annotations;
         }
-        
+
         // Update usage if present
         if (event.usage != null) {
           latestUsage = event.usage;
         }
-        
+
         if (event.isText) {
           // Update accumulated text
           accumulatedText = event.text ?? '';
           yield ChatResponse(
             text: accumulatedText,
             delta: event.delta,
-            toolCalls: List.from(toolCalls),
+            activeToolCalls: List.from(activeToolCalls),
             toolResults: List.from(toolResults),
             reasoningSteps: List.from(reasoningSteps),
             annotations: latestAnnotations,
             usage: latestUsage,
             isComplete: false,
           );
-        } else if (event.isToolCall) {
-          // Add tool call
-          final toolCall = ToolCall(
-            name: event.toolName ?? 'unknown',
-            id: event.toolCallId,
-            args: event.toolArgs,
-            state: event.toolState,
-          );
-          toolCalls.add(toolCall);
-          
-          yield ChatResponse(
-            text: accumulatedText,
-            toolCalls: List.from(toolCalls),
-            toolResults: List.from(toolResults),
-            reasoningSteps: List.from(reasoningSteps),
-            annotations: latestAnnotations,
-            usage: latestUsage,
-            isComplete: false,
-          );
+        } else if (event.isToolCallStreaming) {
+          // Tool call started - add to active calls
+          if (event.toolCallId != null) {
+            activeToolCalls.add(ActiveToolCall(
+              name: event.toolName ?? 'unknown',
+              id: event.toolCallId!,
+              state: 'input-streaming',
+            ));
+
+            yield ChatResponse(
+              text: accumulatedText,
+              activeToolCalls: List.from(activeToolCalls),
+              toolResults: List.from(toolResults),
+              reasoningSteps: List.from(reasoningSteps),
+              annotations: latestAnnotations,
+              usage: latestUsage,
+              isComplete: false,
+            );
+          }
+        } else if (event.isToolCallAvailable) {
+          // Tool call processing - update state
+          if (event.toolCallId != null) {
+            activeToolCalls.removeWhere((tc) => tc.id == event.toolCallId);
+            activeToolCalls.add(ActiveToolCall(
+              name: event.toolName ?? 'unknown',
+              id: event.toolCallId!,
+              state: 'input-available',
+            ));
+
+            yield ChatResponse(
+              text: accumulatedText,
+              activeToolCalls: List.from(activeToolCalls),
+              toolResults: List.from(toolResults),
+              reasoningSteps: List.from(reasoningSteps),
+              annotations: latestAnnotations,
+              usage: latestUsage,
+              isComplete: false,
+            );
+          }
         } else if (event.isToolResult) {
-          // Add tool result
+          // Tool completed - remove from active calls and add result
+          if (event.toolCallId != null) {
+            activeToolCalls.removeWhere((tc) => tc.id == event.toolCallId);
+          }
+
           final toolResult = ToolResult(
             name: event.toolName ?? 'unknown',
             id: event.toolCallId,
             result: event.toolResult,
-            state: event.toolState,
+            state: 'success',
           );
           toolResults.add(toolResult);
-          
+
           yield ChatResponse(
             text: accumulatedText,
-            toolCalls: List.from(toolCalls),
+            activeToolCalls: List.from(activeToolCalls),
+            toolResults: List.from(toolResults),
+            reasoningSteps: List.from(reasoningSteps),
+            annotations: latestAnnotations,
+            usage: latestUsage,
+            isComplete: false,
+          );
+        } else if (event.isToolError) {
+          // Tool failed - remove from active calls and add error result
+          if (event.toolCallId != null) {
+            activeToolCalls.removeWhere((tc) => tc.id == event.toolCallId);
+          }
+
+          final toolResult = ToolResult(
+            name: event.toolName ?? 'unknown',
+            id: event.toolCallId,
+            result: {'error': event.error ?? 'Unknown error'},
+            state: 'error',
+          );
+          toolResults.add(toolResult);
+
+          yield ChatResponse(
+            text: accumulatedText,
+            activeToolCalls: List.from(activeToolCalls),
             toolResults: List.from(toolResults),
             reasoningSteps: List.from(reasoningSteps),
             annotations: latestAnnotations,
@@ -136,7 +183,7 @@ class ChatClient {
             reasoningSteps.add(event.reasoningContent!);
             yield ChatResponse(
               text: accumulatedText,
-              toolCalls: List.from(toolCalls),
+              activeToolCalls: List.from(activeToolCalls),
               toolResults: List.from(toolResults),
               reasoningSteps: List.from(reasoningSteps),
               annotations: latestAnnotations,
@@ -153,7 +200,7 @@ class ChatClient {
         } else if (event.isError) {
           yield ChatResponse(
             text: accumulatedText,
-            toolCalls: List.from(toolCalls),
+            activeToolCalls: List.from(activeToolCalls),
             toolResults: List.from(toolResults),
             reasoningSteps: List.from(reasoningSteps),
             annotations: latestAnnotations,
@@ -164,7 +211,7 @@ class ChatClient {
         } else if (event.isDone) {
           yield ChatResponse(
             text: accumulatedText,
-            toolCalls: List.from(toolCalls),
+            activeToolCalls: List.from(activeToolCalls),
             toolResults: List.from(toolResults),
             reasoningSteps: List.from(reasoningSteps),
             annotations: latestAnnotations,
@@ -177,7 +224,7 @@ class ChatClient {
     } catch (e) {
       yield ChatResponse(
         text: accumulatedText,
-        toolCalls: List.from(toolCalls),
+        activeToolCalls: List.from(activeToolCalls),
         toolResults: List.from(toolResults),
         reasoningSteps: List.from(reasoningSteps),
         annotations: latestAnnotations,
@@ -197,12 +244,12 @@ class ChatClient {
 class ChatResponse {
   final String text;
   final String? delta;
-  final List<ToolCall> toolCalls;
-  final List<ToolResult> toolResults;
+  final List<ActiveToolCall> activeToolCalls; // Currently running tools
+  final List<ToolResult> toolResults; // Completed tools
   final String? error;
   final String? finishReason;
   final bool isComplete;
-  
+
   // Optional features
   final Map<String, dynamic>? annotations;
   final UsageMetadata? usage;
@@ -211,7 +258,7 @@ class ChatResponse {
   ChatResponse({
     required this.text,
     this.delta,
-    required this.toolCalls,
+    this.activeToolCalls = const [],
     required this.toolResults,
     this.error,
     this.finishReason,
@@ -222,7 +269,7 @@ class ChatResponse {
   });
 
   bool get hasError => error != null;
-  bool get hasToolCalls => toolCalls.isNotEmpty;
+  bool get hasActiveToolCalls => activeToolCalls.isNotEmpty;
   bool get hasToolResults => toolResults.isNotEmpty;
   bool get hasAnnotations => annotations != null && annotations!.isNotEmpty;
   bool get hasUsage => usage != null;
@@ -230,41 +277,52 @@ class ChatResponse {
 
   @override
   String toString() {
-    return 'ChatResponse(text: ${text.length} chars, toolCalls: ${toolCalls.length}, toolResults: ${toolResults.length}, error: $error, complete: $isComplete, usage: $usage)';
+    return 'ChatResponse(text: ${text.length} chars, activeToolCalls: ${activeToolCalls.length}, toolResults: ${toolResults.length}, error: $error, complete: $isComplete, usage: $usage)';
   }
 }
 
-/// Tool Call
-class ToolCall {
+/// Active Tool Call (currently running)
+class ActiveToolCall {
   final String name;
-  final String? id;
-  final dynamic args;
-  final String? state;
+  final String id;
+  final String state; // 'input-streaming' | 'input-available'
 
-  ToolCall({
+  ActiveToolCall({
     required this.name,
-    this.id,
-    this.args,
-    this.state,
+    required this.id,
+    required this.state,
   });
 
   @override
-  String toString() => 'ToolCall(name: $name, id: $id, state: $state)';
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ActiveToolCall &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  String toString() => 'ActiveToolCall(name: $name, id: $id, state: $state)';
 }
 
-/// Tool Result
+/// Tool Result (completed tool execution)
 class ToolResult {
   final String name;
   final String? id;
   final dynamic result;
-  final String? state;
+  final String state; // 'success' | 'error'
 
   ToolResult({
     required this.name,
     this.id,
-    this.result,
-    this.state,
+    required this.result,
+    required this.state,
   });
+
+  bool get isError => state == 'error';
+  bool get isSuccess => state == 'success';
 
   @override
   String toString() => 'ToolResult(name: $name, id: $id, state: $state)';

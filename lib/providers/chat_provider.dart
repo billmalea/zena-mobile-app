@@ -248,7 +248,22 @@ class ChatProvider with ChangeNotifier {
 
     try {
       print('🔄 [ChatProvider] Processing message...');
-      // Upload files to Supabase Storage and get public URLs
+      
+      // Create conversation if it doesn't exist (first message)
+      if (_conversationId == null) {
+        print('🆔 [ChatProvider] No conversation ID, creating new conversation...');
+        try {
+          final conversation = await _chatService.createConversation();
+          _conversationId = conversation.id;
+          print('✅ [ChatProvider] Conversation created: $_conversationId');
+          notifyListeners();
+        } catch (e) {
+          print('❌ [ChatProvider] Failed to create conversation: $e');
+          // Continue anyway - backend will create one
+        }
+      }
+      
+      // Upload files directly to Supabase Storage (avoids Vercel 4.5MB limit)
       List<String>? fileUrls;
       if (files != null && files.isNotEmpty) {
         _isUploadingFiles = true;
@@ -272,7 +287,7 @@ class ChatProvider with ChangeNotifier {
             _uploadProgress = (i / files.length);
             notifyListeners();
 
-            // Upload single file
+            // Upload single file to Supabase Storage
             final urls = await _fileUploadService.uploadFiles([file], userId);
             fileUrls.addAll(urls);
 
@@ -291,14 +306,17 @@ class ChatProvider with ChangeNotifier {
         }
       }
 
-      // Build message text with file URLs appended
+      // Build message text (clean, without URLs shown to user)
       String messageText =
           text.isNotEmpty ? text : 'I uploaded a property video';
+      
+      // Build message text for backend (with URLs for AI processing)
+      String messageTextForBackend = messageText;
       if (fileUrls != null && fileUrls.isNotEmpty) {
-        messageText += '\n\n[Uploaded files: ${fileUrls.join(', ')}]';
+        messageTextForBackend += '\n\n[Uploaded files: ${fileUrls.join(', ')}]';
       }
 
-      // Add submission context to message metadata
+      // Add submission context and file metadata
       final metadata = <String, dynamic>{};
       if (_currentSubmissionId != null) {
         metadata['submissionId'] = _currentSubmissionId;
@@ -308,8 +326,13 @@ class ChatProvider with ChangeNotifier {
         print(
             '📋 [ChatProvider] Adding submission context to message: submissionId=$_currentSubmissionId, stage=${currentSubmissionState?.stage}');
       }
+      
+      // Store file URLs in metadata (not shown to user)
+      if (fileUrls != null && fileUrls.isNotEmpty) {
+        metadata['attachedFiles'] = fileUrls;
+      }
 
-      // Add user message immediately
+      // Add user message immediately (clean message without URLs)
       final userMessage = Message(
         id: _uuid.v4(),
         role: 'user',
@@ -370,13 +393,13 @@ class ChatProvider with ChangeNotifier {
           '✅ [ChatProvider] Assistant message placeholder added: $assistantMessageId');
       notifyListeners();
 
-      // Stream the response with message text (URLs already embedded)
+      // Stream the response with message text (URLs embedded for backend)
       print('🔄 [ChatProvider] Calling ChatService.sendMessage...');
-      print('📝 [ChatProvider] Message text: $messageText');
+      print('📝 [ChatProvider] Message text for backend: $messageTextForBackend');
       print('🆔 [ChatProvider] Conversation ID: $_conversationId');
 
       final stream = _chatService.sendMessage(
-        message: messageText,
+        message: messageTextForBackend,
         conversationId: _conversationId,
       );
 
@@ -582,6 +605,16 @@ class ChatProvider with ChangeNotifier {
   void _handleChatEvent(ChatEvent event, String assistantMessageId) {
     print('🎯 [ChatProvider] Received event: ${event.type}');
 
+    // Handle conversation ID event (set conversation ID if not already set)
+    if (event.isConversationId && event.content != null) {
+      if (_conversationId == null) {
+        _conversationId = event.content;
+        print('🆔 [ChatProvider] Conversation ID set: $_conversationId');
+        notifyListeners();
+      }
+      return;
+    }
+
     final messageIndex =
         _messages.indexWhere((m) => m.id == assistantMessageId);
 
@@ -606,11 +639,15 @@ class ChatProvider with ChangeNotifier {
       print('✅ [ChatProvider] Message updated, notified listeners');
     } else if (event.isToolResult && event.toolResult != null) {
       print('🔧 [ChatProvider] Tool result received');
+      print('📊 [ChatProvider] Tool result data: ${event.toolResult}');
 
       // Add tool result to assistant message
+      // Extract the actual result data from the nested 'result' field
+      final resultData = event.toolResult!['result'] as Map<String, dynamic>? ?? event.toolResult!;
+      
       final toolResult = ToolResult(
         toolName: event.toolResult!['toolName'] as String? ?? 'unknown',
-        result: event.toolResult!,
+        result: resultData,
       );
 
       final updatedToolResults = List<ToolResult>.from(
@@ -676,12 +713,14 @@ class ChatProvider with ChangeNotifier {
 
     switch (stage) {
       case 'start':
-        print('🎬 [ChatProvider] Stage: START - Initializing submission');
+      case 'video_upload':
+        print('🎬 [ChatProvider] Stage: START/VIDEO_UPLOAD - Initializing submission');
         // Submission already initialized above
         updateSubmissionStage(SubmissionStage.start);
         break;
 
       case 'video_uploaded':
+      case 'user_confirmation':
         print(
             '🎥 [ChatProvider] Stage: VIDEO_UPLOADED - Processing video data');
         _handleVideoUploadedStage(result);
@@ -694,17 +733,20 @@ class ChatProvider with ChangeNotifier {
         break;
 
       case 'provide_info':
+      case 'missing_info':
         print(
-            '📝 [ChatProvider] Stage: PROVIDE_INFO - Processing missing fields');
+            '📝 [ChatProvider] Stage: PROVIDE_INFO/MISSING_INFO - Processing missing fields');
         _handleProvideInfoStage(result);
         break;
 
       case 'final_confirm':
-        print('🎯 [ChatProvider] Stage: FINAL_CONFIRM - Final review');
+      case 'final_review':
+        print('🎯 [ChatProvider] Stage: FINAL_CONFIRM/FINAL_REVIEW - Final review');
         _handleFinalConfirmStage(result);
         break;
 
       case 'complete':
+      case 'completed':
         print('✅ [ChatProvider] Stage: COMPLETE - Completing submission');
         completeSubmission();
         break;

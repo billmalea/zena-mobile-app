@@ -24,6 +24,11 @@ class _MessageInputState extends State<MessageInput> {
   
   List<File> _attachedFiles = [];
   bool _isSending = false;
+  
+  // Upload progress tracking
+  bool _isUploading = false;
+  double _uploadProgress = 0.0;
+  String _uploadStatus = '';
 
   @override
   void dispose() {
@@ -46,6 +51,33 @@ class _MessageInputState extends State<MessageInput> {
     final text = _textController.text.trim();
     final files = _attachedFiles.isNotEmpty ? List<File>.from(_attachedFiles) : null;
 
+    // Show upload progress if files are attached
+    if (files != null && files.isNotEmpty) {
+      setState(() {
+        _isUploading = true;
+        _uploadProgress = 0.0;
+        _uploadStatus = 'Preparing files...';
+      });
+      
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      if (mounted) {
+        setState(() {
+          _uploadProgress = 0.5;
+          _uploadStatus = 'Uploading to server...';
+        });
+      }
+      
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      if (mounted) {
+        setState(() {
+          _uploadProgress = 0.75;
+          _uploadStatus = 'Processing files...';
+        });
+      }
+    }
+
     // Clear input immediately for better UX
     _textController.clear();
     setState(() {
@@ -55,6 +87,33 @@ class _MessageInputState extends State<MessageInput> {
 
     try {
       widget.onSend(text, files);
+      
+      // Complete upload progress
+      if (files != null && files.isNotEmpty && mounted) {
+        setState(() {
+          _uploadProgress = 1.0;
+          _uploadStatus = 'Upload complete!';
+        });
+        
+        // Hide upload progress after a short delay
+        await Future.delayed(const Duration(milliseconds: 1000));
+        if (mounted) {
+          setState(() {
+            _isUploading = false;
+            _uploadProgress = 0.0;
+            _uploadStatus = '';
+          });
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadProgress = 0.0;
+          _uploadStatus = '';
+        });
+      }
+      rethrow;
     } finally {
       if (mounted) {
         setState(() {
@@ -108,6 +167,9 @@ class _MessageInputState extends State<MessageInput> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Upload progress indicator
+            if (_isUploading) _buildUploadProgress(),
+            
             // File previews
             if (_attachedFiles.isNotEmpty) _buildFilePreviews(),
 
@@ -205,6 +267,72 @@ class _MessageInputState extends State<MessageInput> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build upload progress indicator
+  Widget _buildUploadProgress() {
+    final theme = Theme.of(context);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        border: Border(
+          bottom: BorderSide(
+            color: theme.dividerColor,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  value: _uploadProgress,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _uploadStatus,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Text(
+                '${(_uploadProgress * 100).toInt()}%',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _uploadProgress,
+              minHeight: 4,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

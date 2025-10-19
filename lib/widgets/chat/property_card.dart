@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:video_player/video_player.dart';
 import '../../models/property.dart';
-import 'tool_cards/card_styles.dart';
 
 /// PropertyCard widget displays property information in a card format
-/// Used to show property search results in chat messages
+/// Matches web implementation exactly with video support, like button, and styling
 class PropertyCard extends StatefulWidget {
   final Map<String, dynamic> propertyData;
   final Function(String)? onRequestContact;
+  final bool showContactInfo;
 
   const PropertyCard({
     super.key,
     required this.propertyData,
     this.onRequestContact,
+    this.showContactInfo = false,
   });
 
   @override
@@ -20,325 +22,564 @@ class PropertyCard extends StatefulWidget {
 }
 
 class _PropertyCardState extends State<PropertyCard> {
-  int _currentImageIndex = 0;
-  final PageController _pageController = PageController();
+  bool _isLiked = false;
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
+  bool _videoError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _videoController?.dispose();
     super.dispose();
+  }
+
+  void _initializeVideo() {
+    final videos = widget.propertyData['videos'] as List?;
+    if (videos != null && videos.isNotEmpty) {
+      final videoUrl = videos[0] as String;
+      try {
+        final decodedUrl = Uri.decodeFull(videoUrl);
+        _videoController =
+            VideoPlayerController.networkUrl(Uri.parse(decodedUrl))
+              ..initialize().then((_) {
+                if (mounted) {
+                  setState(() {
+                    _isVideoInitialized = true;
+                  });
+                }
+              }).catchError((error) {
+                print('Video initialization error: $error');
+                if (mounted) {
+                  setState(() {
+                    _videoError = true;
+                  });
+                }
+              });
+        _videoController!.setLooping(true);
+      } catch (e) {
+        print('Video URL decode error: $e');
+        setState(() {
+          _videoError = true;
+        });
+      }
+    }
+  }
+
+  void _toggleVideoPlayback() {
+    if (_videoController != null && _isVideoInitialized) {
+      setState(() {
+        if (_videoController!.value.isPlaying) {
+          _videoController!.pause();
+        } else {
+          _videoController!.play();
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Parse property data
     final property = Property.fromJson(widget.propertyData);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Card(
       elevation: 2,
-      margin: CardStyles.cardMargin,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       clipBehavior: Clip.antiAlias,
-      shape: CardStyles.cardShape(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Property Image Carousel with Availability Badge
-          Stack(
-            children: [
-              _buildImageCarousel(property),
-              // Availability Status Badge
-              Positioned(
-                top: 12,
-                right: 12,
-                child: _buildAvailabilityBadge(context, property),
-              ),
-            ],
-          ),
-
-          // Property Details
-          Padding(
-            padding: CardStyles.cardPadding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                Text(
-                  property.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: CardStyles.smallSpacing),
-
-                // Location
-                Row(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Media Section (Video or Image) - Matches web aspect ratio 4:3
+            SizedBox(
+              width: double.infinity,
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Stack(
+                  clipBehavior: Clip.hardEdge,
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    // Media content (video or image)
+                    Positioned.fill(
+                      child: _buildMediaContent(property),
                     ),
-                    const SizedBox(width: CardStyles.tinySpacing),
-                    Expanded(
-                      child: Text(
-                        property.location,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+
+                    // Video play/pause overlay (only show when video is paused)
+                    if (_videoController != null &&
+                        _isVideoInitialized &&
+                        !_videoController!.value.isPlaying)
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: _toggleVideoPlayback,
+                          child: Container(
+                            color: Colors.black.withOpacity(0.3),
+                            child: Center(
+                              child: Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                              ),
                             ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+
+                    // Like Button - Top Right (matches web)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Material(
+                        color: _isLiked
+                            ? Colors.red
+                            : Colors.white.withOpacity(0.9),
+                        shape: const CircleBorder(),
+                        elevation: 4,
+                        child: InkWell(
+                          onTap: () => setState(() => _isLiked = !_isLiked),
+                          customBorder: const CircleBorder(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              _isLiked ? Icons.favorite : Icons.favorite_border,
+                              size: 20,
+                              color: _isLiked
+                                  ? Colors.white
+                                  : Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Property Type Badge - Top Left (matches web)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          _getPropertyTypeLabel(property.propertyType),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: CardStyles.elementSpacing),
+              ),
+            ),
 
-                // Rent Amount
-                Text(
-                  property.formattedRent,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+            // Property Details Section
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title and Price Row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Expanded(
+                        child: Text(
+                          property.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                ),
-                const SizedBox(height: CardStyles.tinySpacing),
-                Text(
-                  'per month',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      const SizedBox(width: 12),
+                      // Price
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            property.formattedRent,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'per month',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurface.withOpacity(0.6),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                ),
-                const SizedBox(height: CardStyles.elementSpacing),
-
-                // Property Details Row (Bedrooms, Bathrooms, Type)
-                Row(
-                  children: [
-                    _buildDetailIcon(
-                      context,
-                      Icons.bed_outlined,
-                      '${property.bedrooms}',
-                    ),
-                    const SizedBox(width: 16),
-                    _buildDetailIcon(
-                      context,
-                      Icons.bathroom_outlined,
-                      '${property.bathrooms}',
-                    ),
-                    const SizedBox(width: 16),
-                    _buildDetailIcon(
-                      context,
-                      Icons.home_outlined,
-                      property.propertyType,
-                    ),
-                  ],
-                ),
-
-                // Amenities
-                if (property.amenities.isNotEmpty) ...[
-                  const SizedBox(height: CardStyles.sectionSpacing),
-                  _buildAmenities(context, property.amenities),
-                ],
-
-                const SizedBox(height: CardStyles.sectionSpacing),
-
-                // Request Contact Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _handleRequestContact(property),
-                    icon: const Icon(Icons.phone),
-                    label: const Text('Request Contact Info'),
-                    style: CardStyles.primaryButton(context),
+                    ],
                   ),
+
+                  // Description (if available)
+                  if (property.description.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      property.description,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+
+                  // Location
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          property.location,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Bedrooms and Bathrooms
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.bed,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${property.bedrooms} bed${property.bedrooms != 1 ? 's' : ''}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 24),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.bathtub,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${property.bathrooms} bath${property.bathrooms != 1 ? 's' : ''}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Amenities
+                  if (property.amenities.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ...property.amenities
+                            .take(3)
+                            .map((amenity) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.3),
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    amenity,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                )),
+                        if (property.amenities.length > 3)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.3),
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '+${property.amenities.length - 3} more',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+
+                  // Action Buttons
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      // View Details Button
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            // TODO: Navigate to property details
+                          },
+                          icon: const Icon(Icons.visibility, size: 16),
+                          label: const Text('View Details'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Contact/Request Button
+                      if (widget.showContactInfo &&
+                          widget.propertyData['contact_phone'] != null)
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              // TODO: Show contact info
+                            },
+                            icon: const Icon(Icons.phone, size: 16),
+                            label: Text(
+                              widget.propertyData['contact_phone'] as String,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: theme.colorScheme.primary,
+                              side: BorderSide(
+                                  color: theme.colorScheme.primary
+                                      .withOpacity(0.3)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _handleRequestContact(property),
+                            icon: const Icon(Icons.lock, size: 16),
+                            label: const Text('Request Viewing'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.orange.shade700,
+                              side: BorderSide(color: Colors.orange.shade200),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build media content (video or image) - matches web implementation
+  Widget _buildMediaContent(Property property) {
+    final theme = Theme.of(context);
+    final videos = widget.propertyData['videos'] as List?;
+
+    // Show video if available and initialized
+    if (videos != null && videos.isNotEmpty && !_videoError) {
+      if (_videoController != null && _isVideoInitialized) {
+        return GestureDetector(
+          onTap: _toggleVideoPlayback,
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _videoController!.value.size.width,
+              height: _videoController!.value.size.height,
+              child: VideoPlayer(_videoController!),
+            ),
+          ),
+        );
+      } else {
+        // Video is loading
+        return Container(
+          color: theme.colorScheme.surfaceContainerHighest,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Loading video...',
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        );
+      }
+    }
 
-  /// Build image carousel with PageView
-  Widget _buildImageCarousel(Property property) {
-    if (!property.hasImages) {
-      return CardStyles.imageErrorPlaceholder(
-        context,
-        message: 'No image available',
+    // Fallback to image
+    final images = widget.propertyData['images'] as List?;
+    if (images != null && images.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: images[0] as String,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          color: Colors.grey.shade200,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.grey.shade300,
+                Colors.grey.shade400,
+              ],
+            ),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.image_not_supported,
+              size: 48,
+              color: Colors.white,
+            ),
+          ),
+        ),
       );
     }
 
-    return SizedBox(
-      height: 200,
-      width: double.infinity,
-      child: Stack(
-        children: [
-          // Image PageView
-          PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
-            },
-            itemCount: property.images.length,
-            itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: property.images[index],
-                fit: BoxFit.cover,
-                placeholder: (context, url) => CardStyles.imageLoadingPlaceholder(
-                  context,
-                  icon: Icons.image,
-                  message: 'Loading...',
-                ),
-                errorWidget: (context, url, error) => CardStyles.imageErrorPlaceholder(
-                  context,
-                  message: 'Failed to load image',
-                ),
-              );
-            },
-          ),
-          // Carousel Indicators (dots)
-          if (property.images.length > 1)
-            Positioned(
-              bottom: 12,
-              left: 0,
-              right: 0,
-              child: _buildCarouselIndicators(property.images.length),
-            ),
-        ],
+    // No media available
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.grey.shade300,
+            Colors.grey.shade400,
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.home,
+          size: 48,
+          color: Colors.white,
+        ),
       ),
     );
   }
 
-  /// Build carousel indicators (dots)
-  Widget _buildCarouselIndicators(int count) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (index) {
-        final isActive = index == _currentImageIndex;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 8 : 6,
-          height: isActive ? 8 : 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive
-                ? Colors.white
-                : Colors.white.withOpacity(0.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        );
-      }),
-    );
-  }
-
-  /// Build availability status badge
-  Widget _buildAvailabilityBadge(BuildContext context, Property property) {
-    // Determine availability status from property data
-    final isAvailable = widget.propertyData['available'] ?? true;
-    final status = widget.propertyData['status'] as String?;
-    
-    String badgeText = 'Available';
-    Color badgeColor = Colors.green;
-    IconData? icon;
-    
-    if (!isAvailable || status == 'rented' || status == 'unavailable') {
-      badgeText = 'Unavailable';
-      badgeColor = Colors.red;
-      icon = Icons.close;
-    } else if (status == 'pending') {
-      badgeText = 'Pending';
-      badgeColor = Colors.orange;
-      icon = Icons.schedule;
-    } else {
-      icon = Icons.check;
-    }
-
-    return CardStyles.statusBadge(
-      context,
-      badgeText,
-      color: badgeColor,
-      icon: icon,
-    );
-  }
-
-  /// Build detail icon with label for property attributes
-  Widget _buildDetailIcon(BuildContext context, IconData icon, String label) {
-    return CardStyles.iconText(context, icon, label);
-  }
-
-  /// Build amenities chips
-  Widget _buildAmenities(BuildContext context, List<String> amenities) {
-    final theme = Theme.of(context);
-    
-    // Map amenity names to icons
-    final amenityIcons = {
-      'wifi': Icons.wifi,
-      'parking': Icons.local_parking,
-      'security': Icons.security,
-      'gym': Icons.fitness_center,
-      'pool': Icons.pool,
-      'garden': Icons.yard,
-      'balcony': Icons.balcony,
-      'elevator': Icons.elevator,
-      'furnished': Icons.chair,
-      'pet-friendly': Icons.pets,
-      'laundry': Icons.local_laundry_service,
-      'ac': Icons.ac_unit,
+  /// Get property type label - matches web implementation
+  String _getPropertyTypeLabel(String type) {
+    const typeMap = {
+      'apartment': 'Apartment',
+      'house': 'House',
+      'studio': 'Studio',
+      'room': 'Room',
+      'commercial': 'Commercial',
     };
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: amenities.take(6).map((amenity) {
-        final amenityLower = amenity.toLowerCase().replaceAll(' ', '-');
-        final icon = amenityIcons[amenityLower] ?? Icons.check_circle_outline;
-        
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: CardStyles.secondaryContainer(context).copyWith(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.2),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                amenity,
-                style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
-                      fontWeight: FontWeight.w500,
-                    ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
+    return typeMap[type.toLowerCase()] ?? type;
   }
 
   /// Handle request contact button press
   void _handleRequestContact(Property property) {
     if (widget.onRequestContact != null) {
       // Send message to request contact info for this property
-      widget.onRequestContact!('I want to request contact info for ${property.title}');
+      widget.onRequestContact!(
+          'I want to request contact info for ${property.title}');
     } else {
       // Fallback: show snackbar
       ScaffoldMessenger.of(context).showSnackBar(

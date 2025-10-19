@@ -43,11 +43,11 @@ Future<void> example1HighLevelClient() async {
       // Print accumulated text
       print('AI: ${response.text}');
 
-      // Handle tool calls
-      if (response.hasToolCalls) {
-        for (final toolCall in response.toolCalls) {
-          print('🔧 Tool called: ${toolCall.name}');
-          print('   Args: ${toolCall.args}');
+      // Handle active tool calls (loading state)
+      if (response.hasActiveToolCalls) {
+        for (final toolCall in response.activeToolCalls) {
+          print('🔧 Tool running: ${toolCall.name}');
+          print('   State: ${toolCall.state}');
         }
       }
 
@@ -107,8 +107,13 @@ Future<void> example2LowLevelClient() async {
           }
           break;
 
-        case AIStreamEventType.toolCall:
-          print('🔧 Tool call: ${event.toolName}');
+        case AIStreamEventType.toolCallStreaming:
+          print('🔧 Tool call streaming: ${event.toolName}');
+          print('   ID: ${event.toolCallId}');
+          break;
+
+        case AIStreamEventType.toolCallAvailable:
+          print('🔧 Tool call available: ${event.toolName}');
           print('   ID: ${event.toolCallId}');
           print('   Args: ${event.toolArgs}');
           break;
@@ -125,6 +130,11 @@ Future<void> example2LowLevelClient() async {
 
         case AIStreamEventType.done:
           print('✅ Done: ${event.finishReason}');
+          break;
+
+        case AIStreamEventType.toolError:
+          print('❌ Tool error: ${event.toolName}');
+          print('   Error: ${event.error}');
           break;
 
         case AIStreamEventType.stepStart:
@@ -158,7 +168,8 @@ Future<void> example3ComplexMessages() async {
     parts: [
       TextPart(text: 'What do you see in this image?'),
       FilePart(
-        url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        url:
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
         mediaType: 'image/png',
       ),
     ],
@@ -239,13 +250,12 @@ Future<void> example5ToolHandling() async {
     await for (final response in chatClient.sendMessage(
       message: 'Search for properties in Nairobi',
     )) {
-      // Track tool calls
-      for (final toolCall in response.toolCalls) {
+      // Track active tool calls (loading state)
+      for (final toolCall in response.activeToolCalls) {
         if (!toolCallsReceived.contains(toolCall.name)) {
           toolCallsReceived.add(toolCall.name);
-          print('🔧 Tool called: ${toolCall.name}');
+          print('🔧 Tool running: ${toolCall.name}');
           print('   State: ${toolCall.state}');
-          print('   Args: ${toolCall.args}');
         }
       }
 
@@ -272,7 +282,6 @@ Future<void> example5ToolHandling() async {
     chatClient.dispose();
   }
 }
-
 
 /// Example 6: Optional features (annotations, usage, reasoning)
 Future<void> example6OptionalFeatures() async {
