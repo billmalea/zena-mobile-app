@@ -8,7 +8,7 @@ import '../../widgets/chat/enhanced_empty_state.dart';
 import '../../widgets/chat/message_bubble.dart';
 import '../../widgets/chat/message_input.dart';
 import '../../widgets/chat/thinking_indicator.dart';
-import '../../widgets/chat/workflow/submission_recovery_dialog.dart';
+// import '../../widgets/chat/workflow/submission_recovery_dialog.dart'; // Removed: No longer needed
 import '../../widgets/conversation/conversation_drawer.dart';
 import '../../widgets/connectivity_indicator.dart';
 import '../../widgets/common/shimmer_widget.dart';
@@ -40,46 +40,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Check if there's a recovered submission and prompt user
+  /// REMOVED: Submission recovery removed - backend handles via conversation history (like web)
   void _checkForRecoveredSubmission() {
-    final chatProvider = context.read<ChatProvider>();
-
-    if (chatProvider.hasRecoveredSubmission &&
-        chatProvider.currentSubmissionState != null) {
-      _showRecoveryDialog(chatProvider);
-    }
+    // No-op: Recovery feature removed
   }
 
   /// Show recovery dialog to prompt user to continue or cancel submission
+  /// REMOVED: Submission recovery removed - backend handles via conversation history (like web)
   void _showRecoveryDialog(ChatProvider chatProvider) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => SubmissionRecoveryDialog(
-        submissionState: chatProvider.currentSubmissionState!,
-        onContinue: () {
-          Navigator.of(context).pop();
-          // Submission is already restored, just dismiss dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Continuing your property submission'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-        onCancel: () {
-          Navigator.of(context).pop();
-          chatProvider.cancelSubmission();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Submission cancelled'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        },
-      ),
-    );
+    // No-op: Recovery feature removed
   }
 
   @override

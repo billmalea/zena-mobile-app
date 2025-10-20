@@ -34,24 +34,33 @@ class ChatClient {
     required String message,
     String? conversationId,
     List<MessagePart>? additionalParts,
+    List<UIMessage>? conversationHistory,  // ← Add conversation history parameter
   }) async* {
     print('🎯 [ChatClient] sendMessage called');
     print('💬 [ChatClient] Message: $message');
     print('🆔 [ChatClient] Conversation ID: $conversationId');
 
-    // Build message
+    // Build current message
     final parts = <MessagePart>[
       TextPart(text: message),
       ...?additionalParts,
     ];
 
-    final uiMessage = UIMessage(
+    final currentMessage = UIMessage(
       id: 'msg-${DateTime.now().millisecondsSinceEpoch}',
       role: 'user',
       parts: parts,
     );
 
-    print('📨 [ChatClient] UIMessage created: ${uiMessage.id}');
+    print('📨 [ChatClient] UIMessage created: ${currentMessage.id}');
+
+    // Combine conversation history with current message (like useChat does)
+    final allMessages = [
+      ...?conversationHistory,  // Previous messages with tool results
+      currentMessage,           // Current user message
+    ];
+    
+    print('📊 [ChatClient] Sending ${allMessages.length} messages (${conversationHistory?.length ?? 0} history + 1 current)');
 
     // Track state
     String accumulatedText = '';
@@ -65,7 +74,7 @@ class ChatClient {
       print('🔄 [ChatClient] Starting stream...');
       await for (final event in _streamClient.streamChat(
         endpoint: '/api/chat',
-        messages: [uiMessage],
+        messages: allMessages,  // ← Send all messages (like useChat)
         conversationId: conversationId,
       )) {
         print('📥 [ChatClient] Received event: ${event.type}');

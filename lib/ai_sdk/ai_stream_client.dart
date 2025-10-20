@@ -687,6 +687,29 @@ class FilePart extends MessagePart {
   }
 }
 
+/// Tool Call Part (for tool results in conversation history)
+class ToolCallPart extends MessagePart {
+  final String toolName;
+  final String? toolCallId;  // ← Add toolCallId to link back to tool call
+  final Map<String, dynamic> output;
+
+  ToolCallPart({
+    required this.toolName,
+    this.toolCallId,  // ← Make it optional for backward compatibility
+    required this.output,
+  }) : super('tool-result');  // ← Use 'tool-result' type (not 'tool-$toolName')
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'type': 'tool-result',  // ← AI SDK expects 'tool-result' type
+      'toolName': toolName,
+      if (toolCallId != null) 'toolCallId': toolCallId,  // ← Include toolCallId if present
+      'result': output,  // ← Changed from 'output' to 'result' to match AI SDK format
+    };
+  }
+}
+
 /// AI Stream Exception
 class AIStreamException implements Exception {
   final String message;

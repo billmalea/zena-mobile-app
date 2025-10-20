@@ -166,11 +166,13 @@ class ActiveToolCall {
 /// Tool result from AI assistant tool calls
 class ToolResult {
   final String toolName;
+  final String? toolCallId;  // ← Add toolCallId to link back to tool call
   final Map<String, dynamic> result;
   final String state;  // 'success' | 'error'
 
   ToolResult({
     required this.toolName,
+    this.toolCallId,  // ← Make it optional for backward compatibility
     required this.result,
     this.state = 'success',
   });
@@ -185,6 +187,7 @@ class ToolResult {
   factory ToolResult.fromJson(Map<String, dynamic> json) {
     return ToolResult(
       toolName: json['toolName'] as String,
+      toolCallId: json['toolCallId'] as String?,  // ← Parse toolCallId
       result: json['result'] as Map<String, dynamic>,
       state: json['state'] as String? ?? 'success',
     );
@@ -194,6 +197,7 @@ class ToolResult {
   Map<String, dynamic> toJson() {
     return {
       'toolName': toolName,
+      if (toolCallId != null) 'toolCallId': toolCallId,  // ← Include toolCallId if present
       'result': result,
       'state': state,
     };

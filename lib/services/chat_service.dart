@@ -1,6 +1,7 @@
 import '../config/app_config.dart';
 import '../models/conversation.dart';
 import '../ai_sdk/chat_client.dart';
+import '../ai_sdk/ai_stream_client.dart';  // ← Add AI SDK types for UIMessage
 import 'api_service.dart';
 import 'auth_service.dart';
 
@@ -29,6 +30,7 @@ class ChatService {
   Stream<ChatEvent> sendMessage({
     required String message,
     String? conversationId,
+    List<UIMessage>? conversationHistory,  // ← Add conversation history parameter
   }) async* {
     print('🎬 [ChatService] sendMessage called');
     print('💬 [ChatService] Message: $message');
@@ -44,6 +46,7 @@ class ChatService {
       await for (final response in _chatClient.sendMessage(
         message: message,
         conversationId: conversationId,
+        conversationHistory: conversationHistory,  // ← Pass conversation history
       )) {
         print(
             '📥 [ChatService] Received response: text=${response.text.length} chars, error=${response.error}');
